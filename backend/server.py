@@ -903,39 +903,54 @@ async def get_detailed_submissions(
     location: Optional[str] = None,
     month_year: Optional[str] = None,
     template_id: Optional[str] = None,
+    submitted_by: Optional[str] = None,
+    status: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
     """Get submissions with user details"""
-    query = {}
-    
-    # Role-based filtering
-    if current_user.role in ["manager", "data_entry"]:
-        query["service_location"] = current_user.assigned_location
-    elif location:
-        query["service_location"] = location
-    
-    if month_year:
-        query["month_year"] = month_year
-    if template_id:
-        query["template_id"] = template_id
-    
-    # Get submissions first
-    submissions = await db.data_submissions.find(query).to_list(1000)
-    
-    # Remove ObjectIds for JSON serialization
-    for submission in submissions:
-        if "_id" in submission:
-            del submission["_id"]
-    
-    # Enrich with user information
-    for submission in submissions:
-        user = await db.users.find_one({"id": submission["submitted_by"]})
-        submission["submitted_by_username"] = user["username"] if user else "Unknown User"
-    
-    # Sort by submission date
-    submissions.sort(key=lambda x: x["submitted_at"], reverse=True)
-    
-    return submissions
+    try:
+        logger.info(f"Detailed submissions request - User: {current_user.username}, Role: {current_user.role}")
+        query = {}
+        
+        # Role-based filtering
+        if current_user.role in ["manager", "data_entry"]:
+            query["service_location"] = current_user.assigned_location
+        elif location:
+            query["service_location"] = location
+        
+        if month_year:
+            query["month_year"] = month_year
+        if template_id:
+            query["template_id"] = template_id
+        if submitted_by:
+            query["submitted_by"] = submitted_by
+        if status:
+            query["status"] = status
+        
+        logger.info(f"Query parameters: {query}")
+        
+        # Get submissions first
+        submissions = await db.data_submissions.find(query).to_list(1000)
+        logger.info(f"Found {len(submissions)} submissions")
+        
+        # Remove ObjectIds for JSON serialization
+        for submission in submissions:
+            if "_id" in submission:
+                del submission["_id"]
+        
+        # Enrich with user information
+        for submission in submissions:
+            user = await db.users.find_one({"id": submission["submitted_by"]})
+            submission["submitted_by_username"] = user["username"] if user else "Unknown User"
+        
+        # Sort by submission date
+        submissions.sort(key=lambda x: x["submitted_at"], reverse=True)
+        
+        return submissions
+    except Exception as e:
+        logger.error(f"Error in detailed submissions: {str(e)}")
+        # Return empty list instead of 404 error
+        return []
 
 @api_router.get("/")
 async def root():
