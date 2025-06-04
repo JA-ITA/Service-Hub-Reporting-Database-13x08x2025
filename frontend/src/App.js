@@ -1123,6 +1123,10 @@ const Reports = ({ user }) => {
   const [submissions, setSubmissions] = useState([]);
   const [locations, setLocations] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [editingSubmission, setEditingSubmission] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [filters, setFilters] = useState({
     location: '',
     month_year: '',
@@ -1167,6 +1171,49 @@ const Reports = ({ user }) => {
     }
   };
 
+  const fetchSubmissionDetail = async (submissionId) => {
+    try {
+      const response = await axios.get(`${API}/submissions/${submissionId}`, { headers: getAuthHeader() });
+      setSelectedSubmission(response.data);
+      setShowDetailModal(true);
+    } catch (error) {
+      alert('Error fetching submission details: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const startEditSubmission = async (submissionId) => {
+    try {
+      const response = await axios.get(`${API}/submissions/${submissionId}`, { headers: getAuthHeader() });
+      setEditingSubmission(response.data);
+      setEditFormData(response.data.form_data || {});
+    } catch (error) {
+      alert('Error fetching submission for editing: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const saveSubmissionEdit = async () => {
+    try {
+      const updateData = {
+        form_data: editFormData,
+        month_year: editingSubmission.month_year,
+        status: editingSubmission.status
+      };
+
+      await axios.put(`${API}/submissions/${editingSubmission.id}`, updateData, { headers: getAuthHeader() });
+      alert('Submission updated successfully!');
+      setEditingSubmission(null);
+      setEditFormData({});
+      fetchSubmissions();
+    } catch (error) {
+      alert('Error updating submission: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingSubmission(null);
+    setEditFormData({});
+  };
+
   const exportCSV = async () => {
     try {
       const params = new URLSearchParams();
@@ -1188,6 +1235,51 @@ const Reports = ({ user }) => {
       document.body.removeChild(link);
     } catch (error) {
       console.error('Error exporting CSV:', error);
+    }
+  };
+
+  const getTemplateById = (templateId) => {
+    return templates.find(t => t.id === templateId);
+  };
+
+  const renderEditFormField = (field, value) => {
+    const commonProps = {
+      className: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm",
+      value: value || '',
+      onChange: (e) => setEditFormData({...editFormData, [field.name]: e.target.value})
+    };
+
+    switch (field.type) {
+      case 'textarea':
+        return <textarea {...commonProps} rows="3" />;
+      case 'number':
+        return <input type="number" {...commonProps} />;
+      case 'date':
+        return <input type="date" {...commonProps} />;
+      case 'select':
+        return (
+          <select {...commonProps}>
+            <option value="">Select an option</option>
+            {field.options?.map((option, idx) => (
+              <option key={idx} value={option}>{option}</option>
+            ))}
+          </select>
+        );
+      case 'file':
+        return (
+          <div>
+            <p className="text-sm text-gray-600">Current file: {value || 'None'}</p>
+            <input
+              type="text"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              value={value || ''}
+              onChange={(e) => setEditFormData({...editFormData, [field.name]: e.target.value})}
+              placeholder="File name or path"
+            />
+          </div>
+        );
+      default:
+        return <input type="text" {...commonProps} />;
     }
   };
 
@@ -1249,6 +1341,158 @@ const Reports = ({ user }) => {
         </div>
       </div>
 
+      {/* Edit Submission Modal */}
+      {editingSubmission && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Edit Submission</h3>
+                <button
+                  onClick={cancelEdit}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="mb-4 p-4 bg-gray-50 rounded">
+                <p><strong>Template:</strong> {getTemplateById(editingSubmission.template_id)?.name}</p>
+                <p><strong>Location:</strong> {editingSubmission.service_location}</p>
+                <p><strong>Month/Year:</strong> {editingSubmission.month_year}</p>
+                <p><strong>Status:</strong> 
+                  <select
+                    className="ml-2 px-2 py-1 border border-gray-300 rounded text-sm"
+                    value={editingSubmission.status}
+                    onChange={(e) => setEditingSubmission({...editingSubmission, status: e.target.value})}
+                  >
+                    <option value="submitted">Submitted</option>
+                    <option value="reviewed">Reviewed</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </p>
+              </div>
+
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {getTemplateById(editingSubmission.template_id)?.fields.map((field, index) => (
+                  <div key={index}>
+                    <label className="block text-sm font-medium text-gray-700">
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {renderEditFormField(field, editFormData[field.name])}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end space-x-4 mt-6">
+                <button
+                  onClick={cancelEdit}
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveSubmissionEdit}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail View Modal */}
+      {showDetailModal && selectedSubmission && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Submission Details</h3>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded">
+                  <div>
+                    <strong>Template:</strong> {getTemplateById(selectedSubmission.template_id)?.name}
+                  </div>
+                  <div>
+                    <strong>Location:</strong> {selectedSubmission.service_location}
+                  </div>
+                  <div>
+                    <strong>Month/Year:</strong> {selectedSubmission.month_year}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                      selectedSubmission.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      selectedSubmission.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
+                      selectedSubmission.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {selectedSubmission.status}
+                    </span>
+                  </div>
+                  <div>
+                    <strong>Submitted:</strong> {new Date(selectedSubmission.submitted_at).toLocaleString()}
+                  </div>
+                  <div>
+                    <strong>Submitted By:</strong> {selectedSubmission.submitted_by}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-3">Form Data:</h4>
+                  <div className="space-y-3">
+                    {getTemplateById(selectedSubmission.template_id)?.fields.map((field, index) => (
+                      <div key={index} className="border-b pb-2">
+                        <strong className="text-sm text-gray-700">{field.label}:</strong>
+                        <div className="mt-1">
+                          {field.type === 'file' ? (
+                            selectedSubmission.form_data[field.name] ? (
+                              <a 
+                                href={`${API}/files/${selectedSubmission.form_data[field.name]}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                {selectedSubmission.form_data[field.name]}
+                              </a>
+                            ) : (
+                              <span className="text-gray-500">No file uploaded</span>
+                            )
+                          ) : (
+                            <span>{selectedSubmission.form_data[field.name] || 'No data'}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Results */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-6">
@@ -1266,6 +1510,7 @@ const Reports = ({ user }) => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted By</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1287,9 +1532,30 @@ const Reports = ({ user }) => {
                         {new Date(submission.submitted_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          submission.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          submission.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
+                          submission.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
                           {submission.status}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <button
+                          onClick={() => fetchSubmissionDetail(submission.id)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          View
+                        </button>
+                        {user.role !== 'data_entry' && (
+                          <button
+                            onClick={() => startEditSubmission(submission.id)}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Edit
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
