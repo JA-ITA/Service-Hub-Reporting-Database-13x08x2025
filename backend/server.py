@@ -602,6 +602,90 @@ async def export_csv(
         headers={"Content-Disposition": "attachment; filename=report.csv"}
     )
 
+# User Role Management Routes (Admin only)
+@api_router.post("/roles", response_model=UserRole)
+async def create_role(role_data: UserRoleCreate, current_user: User = Depends(require_role(["admin"]))):
+    # Check if role name already exists
+    existing_role = await db.user_roles.find_one({"name": role_data.name})
+    if existing_role:
+        raise HTTPException(status_code=400, detail="Role name already exists")
+    
+    role = UserRole(**role_data.dict(), created_by=current_user.id)
+    await db.user_roles.insert_one(role.dict())
+    return role
+
+@api_router.get("/roles")
+async def get_roles(current_user: User = Depends(require_role(["admin"]))):
+    roles = await db.user_roles.find({"is_active": True}).to_list(1000)
+    
+    # Remove ObjectIds for JSON serialization
+    for role in roles:
+        if "_id" in role:
+            del role["_id"]
+    
+    return roles
+
+@api_router.get("/roles/{role_id}")
+async def get_role(role_id: str, current_user: User = Depends(require_role(["admin"]))):
+    role = await db.user_roles.find_one({"id": role_id})
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    # Remove ObjectId for JSON serialization
+    if "_id" in role:
+        del role["_id"]
+    
+    return role
+
+@api_router.put("/roles/{role_id}")
+async def update_role(role_id: str, role_data: UserRoleCreate, current_user: User = Depends(require_role(["admin"]))):
+    # Check if role exists
+    existing_role = await db.user_roles.find_one({"id": role_id})
+    if not existing_role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    # Check if it's a system role
+    if existing_role.get("is_system_role", False):
+        raise HTTPException(status_code=403, detail="Cannot modify system roles")
+    
+    # Check if new name conflicts with existing role (excluding current role)
+    if role_data.name != existing_role["name"]:
+        name_conflict = await db.user_roles.find_one({"name": role_data.name, "id": {"$ne": role_id}})
+        if name_conflict:
+            raise HTTPException(status_code=400, detail="Role name already exists")
+    
+    update_data = role_data.dict()
+    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_by"] = current_user.id
+    
+    await db.user_roles.update_one({"id": role_id}, {"$set": update_data})
+    return {"message": "Role updated successfully"}
+
+@api_router.delete("/roles/{role_id}")
+async def delete_role(role_id: str, current_user: User = Depends(require_role(["admin"]))):
+    # Check if role exists
+    role = await db.user_roles.find_one({"id": role_id})
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    # Check if it's a system role
+    if role.get("is_system_role", False):
+        raise HTTPException(status_code=403, detail="Cannot delete system roles")
+    
+    # Check if any users are using this role
+    users_with_role = await db.users.find({"role": role["name"], "is_active": True}).to_list(1000)
+    if users_with_role:
+        raise HTTPException(status_code=400, detail=f"Cannot delete role: {len(users_with_role)} users are assigned to this role")
+    
+    await db.user_roles.update_one({"id": role_id}, {"$set": {"is_active": False}})
+    return {"message": "Role deleted successfully"}
+
+# Enhanced function to get available roles
+async def get_available_roles():
+    """Get all active roles for dropdown selection"""
+    roles = await db.user_roles.find({"is_active": True}).to_list(1000)
+    return [{"name": role["name"], "display_name": role["display_name"]} for role in roles]
+
 # Admin Settings Routes
 @api_router.post("/admin/settings")
 async def create_or_update_setting(setting_data: AdminSettingCreate, current_user: User = Depends(require_role(["admin"]))):
