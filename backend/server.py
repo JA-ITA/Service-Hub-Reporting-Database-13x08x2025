@@ -919,42 +919,22 @@ async def get_detailed_submissions(
     if template_id:
         query["template_id"] = template_id
     
-    # Use aggregation to join with user data
-    pipeline = [
-        {"$match": query},
-        {
-            "$lookup": {
-                "from": "users",
-                "localField": "submitted_by",
-                "foreignField": "id",
-                "as": "submitted_user"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$submitted_user",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "id": 1,
-                "template_id": 1,
-                "service_location": 1,
-                "month_year": 1,
-                "form_data": 1,
-                "attachments": 1,
-                "submitted_at": 1,
-                "status": 1,
-                "submitted_by": 1,
-                "submitted_by_username": {"$ifNull": ["$submitted_user.username", "Unknown User"]}
-            }
-        },
-        {"$sort": {"submitted_at": -1}}
-    ]
+    # Get submissions first
+    submissions = await db.data_submissions.find(query).to_list(1000)
     
-    submissions = await db.data_submissions.aggregate(pipeline).to_list(1000)
+    # Remove ObjectIds for JSON serialization
+    for submission in submissions:
+        if "_id" in submission:
+            del submission["_id"]
+    
+    # Enrich with user information
+    for submission in submissions:
+        user = await db.users.find_one({"id": submission["submitted_by"]})
+        submission["submitted_by_username"] = user["username"] if user else "Unknown User"
+    
+    # Sort by submission date
+    submissions.sort(key=lambda x: x["submitted_at"], reverse=True)
+    
     return submissions
 
 @api_router.get("/")
