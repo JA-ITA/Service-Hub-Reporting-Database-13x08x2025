@@ -697,10 +697,11 @@ const UserManagement = () => {
               <select
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
                 value={newUser.role}
-                onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                onChange={(e) => handleRoleChange(e.target.value)}
               >
                 <option value="data_entry">Data Entry Officer</option>
                 <option value="manager">Service Hub Manager</option>
+                <option value="statistician">Statistician</option>
                 <option value="admin">Administrator</option>
               </select>
             </div>
@@ -717,6 +718,35 @@ const UserManagement = () => {
                   <option key={location.id} value={location.name}>{location.name}</option>
                 ))}
               </select>
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Page Permissions</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {availablePermissions.map(permission => (
+                  <label key={permission.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={newUser.page_permissions.includes(permission.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setNewUser({
+                            ...newUser,
+                            page_permissions: [...newUser.page_permissions, permission.id]
+                          });
+                        } else {
+                          setNewUser({
+                            ...newUser,
+                            page_permissions: newUser.page_permissions.filter(p => p !== permission.id)
+                          });
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{permission.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             
             <div className="md:col-span-2 flex space-x-4">
