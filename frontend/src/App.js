@@ -104,25 +104,35 @@ const Login = ({ onLogin }) => {
 
 // Navigation Component
 const Navigation = ({ user, activeTab, setActiveTab, onLogout }) => {
-  const tabs = {
-    admin: [
+  const getAvailableTabs = () => {
+    const allTabs = [
       { id: 'dashboard', label: 'Dashboard' },
       { id: 'users', label: 'Manage Users' },
       { id: 'locations', label: 'Manage Locations' },
       { id: 'templates', label: 'Manage Templates' },
       { id: 'reports', label: 'Reports' },
-      { id: 'submit', label: 'Submit Data' }
-    ],
-    manager: [
-      { id: 'dashboard', label: 'Dashboard' },
       { id: 'submit', label: 'Submit Data' },
-      { id: 'reports', label: 'Reports' }
-    ],
-    data_entry: [
-      { id: 'dashboard', label: 'Dashboard' },
-      { id: 'submit', label: 'Submit Data' }
-    ]
+      { id: 'statistics', label: 'Statistics' }
+    ];
+
+    // Filter tabs based on user permissions
+    if (user.page_permissions && user.page_permissions.length > 0) {
+      return allTabs.filter(tab => user.page_permissions.includes(tab.id));
+    }
+
+    // Fallback to role-based tabs if no permissions defined
+    const roleTabs = {
+      admin: ['dashboard', 'users', 'locations', 'templates', 'reports', 'submit', 'statistics'],
+      manager: ['dashboard', 'submit', 'reports'],
+      data_entry: ['dashboard', 'submit'],
+      statistician: ['dashboard', 'statistics', 'reports']
+    };
+
+    const userTabs = roleTabs[user.role] || ['dashboard'];
+    return allTabs.filter(tab => userTabs.includes(tab.id));
   };
+
+  const availableTabs = getAvailableTabs();
 
   return (
     <nav className="bg-blue-600 text-white p-4">
@@ -130,7 +140,7 @@ const Navigation = ({ user, activeTab, setActiveTab, onLogout }) => {
         <div className="flex items-center space-x-6">
           <h1 className="text-xl font-bold">CLIENT SERVICES</h1>
           <div className="flex space-x-4">
-            {tabs[user.role]?.map(tab => (
+            {availableTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
