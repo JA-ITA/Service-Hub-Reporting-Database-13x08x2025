@@ -185,9 +185,16 @@ async def initialize_default_data():
         admin_user = User(
             username="admin",
             password_hash=hash_password("admin123"),
-            role="admin"
+            role="admin",
+            page_permissions=get_default_permissions("admin")
         )
         await db.users.insert_one(admin_user.dict())
+    else:
+        # Update existing admin with new permissions if needed
+        await db.users.update_one(
+            {"username": "admin"}, 
+            {"$set": {"page_permissions": get_default_permissions("admin")}}
+        )
         
     # Create sample locations if not exist
     locations_count = await db.service_locations.count_documents({})
