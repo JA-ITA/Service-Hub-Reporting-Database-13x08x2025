@@ -907,7 +907,7 @@ async def get_statistics_options(current_user: User = Depends(get_current_user))
     }
 
 # Enhanced submissions endpoint to include username
-@api_router.get("/submissions/detailed")
+@api_router.get("/submissions-detailed")
 async def get_detailed_submissions(
     location: Optional[str] = None,
     month_year: Optional[str] = None,
