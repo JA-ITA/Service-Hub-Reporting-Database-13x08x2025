@@ -276,9 +276,31 @@ async def get_templates(current_user: User = Depends(get_current_user)):
         }).to_list(1000)
     return [FormTemplate(**template) for template in templates]
 
+@api_router.get("/templates/{template_id}")
+async def get_template(template_id: str, current_user: User = Depends(require_role(["admin"]))):
+    template = await db.form_templates.find_one({"id": template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Remove ObjectId for JSON serialization
+    if "_id" in template:
+        del template["_id"]
+    
+    return template
+
 @api_router.put("/templates/{template_id}")
-async def update_template(template_id: str, template_data: dict, current_user: User = Depends(require_role(["admin"]))):
-    await db.form_templates.update_one({"id": template_id}, {"$set": template_data})
+async def update_template(template_id: str, template_data: FormTemplateCreate, current_user: User = Depends(require_role(["admin"]))):
+    # Check if template exists
+    existing_template = await db.form_templates.find_one({"id": template_id})
+    if not existing_template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Update template with new data
+    update_data = template_data.dict()
+    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_by"] = current_user.id
+    
+    await db.form_templates.update_one({"id": template_id}, {"$set": update_data})
     return {"message": "Template updated successfully"}
 
 @api_router.delete("/templates/{template_id}")
