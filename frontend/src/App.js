@@ -1580,6 +1580,10 @@ const Reports = ({ user }) => {
       console.error('Error fetching submissions:', error);
       // Fallback to regular submissions if detailed endpoint fails
       try {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) params.append(key, value);
+        });
         const response = await axios.get(`${API}/submissions?${params}`, { headers: getAuthHeader() });
         const regularSubmissions = response.data || [];
         // Add username lookup for fallback
