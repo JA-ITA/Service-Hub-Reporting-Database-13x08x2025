@@ -428,19 +428,25 @@ async def get_submissions(
 
 @api_router.get("/submissions/{submission_id}")
 async def get_submission(submission_id: str, current_user: User = Depends(get_current_user)):
-    submission = await db.data_submissions.find_one({"id": submission_id})
-    if not submission:
-        raise HTTPException(status_code=404, detail="Submission not found")
-    
-    # Check if user can view this submission
-    if current_user.role in ["manager", "data_entry"] and submission["service_location"] != current_user.assigned_location:
-        raise HTTPException(status_code=403, detail="Cannot view this submission")
-    
-    # Remove ObjectId for JSON serialization
-    if "_id" in submission:
-        del submission["_id"]
-    
-    return submission
+    try:
+        submission = await db.data_submissions.find_one({"id": submission_id})
+        if not submission:
+            raise HTTPException(status_code=404, detail="Submission not found")
+        
+        # Check if user can view this submission
+        if current_user.role in ["manager", "data_entry"] and submission["service_location"] != current_user.assigned_location:
+            raise HTTPException(status_code=403, detail="Cannot view this submission")
+        
+        # Remove ObjectId for JSON serialization
+        if "_id" in submission:
+            del submission["_id"]
+        
+        return submission
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting submission {submission_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @api_router.put("/submissions/{submission_id}")
 async def update_submission(submission_id: str, submission_data: dict, current_user: User = Depends(get_current_user)):
