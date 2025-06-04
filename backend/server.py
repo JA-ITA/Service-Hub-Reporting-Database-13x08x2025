@@ -49,8 +49,9 @@ class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
     password_hash: str
-    role: str  # 'admin', 'manager', 'data_entry'
+    role: str  # 'admin', 'manager', 'data_entry', 'statistician'
     assigned_location: Optional[str] = None
+    page_permissions: List[str] = []  # List of allowed pages
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_active: bool = True
 
@@ -59,6 +60,7 @@ class UserCreate(BaseModel):
     password: str
     role: str
     assigned_location: Optional[str] = None
+    page_permissions: List[str] = []
 
 class UserLogin(BaseModel):
     username: str
