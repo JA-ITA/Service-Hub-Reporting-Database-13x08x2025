@@ -1543,7 +1543,14 @@ const Reports = ({ user }) => {
   const [editingSubmission, setEditingSubmission] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [summaryData, setSummaryData] = useState({});
+  const [summaryData, setSummaryData] = useState({
+    byTemplate: {},
+    byLocation: {},
+    byMonth: {},
+    byUser: {},
+    byStatus: {},
+    byDate: {}
+  });
   const [activeView, setActiveView] = useState('summary'); // 'summary' or 'detailed'
   const [filters, setFilters] = useState({
     location: '',
