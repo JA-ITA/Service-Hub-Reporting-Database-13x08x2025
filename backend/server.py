@@ -108,6 +108,19 @@ class DataSubmissionCreate(BaseModel):
     month_year: str
     form_data: Dict[str, Any]
 
+class AdminSetting(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    setting_key: str
+    setting_value: str
+    description: Optional[str] = None
+    updated_by: str
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class AdminSettingCreate(BaseModel):
+    setting_key: str
+    setting_value: str
+    description: Optional[str] = None
+
 # Helper functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
