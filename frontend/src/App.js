@@ -2377,6 +2377,8 @@ function App() {
         return <DataSubmission user={user} />;
       case 'reports':
         return <Reports user={user} />;
+      case 'statistics':
+        return <Statistics user={user} />;
       default:
         return <Dashboard user={user} />;
     }
