@@ -318,6 +318,12 @@ async def get_submissions(
         query["template_id"] = template_id
     
     submissions = await db.data_submissions.find(query).to_list(1000)
+    
+    # Convert ObjectIds to strings for JSON serialization
+    for submission in submissions:
+        if "_id" in submission:
+            del submission["_id"]
+    
     return submissions
 
 @api_router.put("/submissions/{submission_id}")
