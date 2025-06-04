@@ -984,6 +984,15 @@ const DataSubmission = ({ user }) => {
         return <input type="number" {...commonProps} />;
       case 'date':
         return <input type="date" {...commonProps} />;
+      case 'select':
+        return (
+          <select {...commonProps}>
+            <option value="">Select an option</option>
+            {field.options?.map((option, idx) => (
+              <option key={idx} value={option}>{option}</option>
+            ))}
+          </select>
+        );
       case 'file':
         return (
           <div>
