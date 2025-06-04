@@ -713,6 +713,243 @@ async def get_missing_reports(current_user: User = Depends(get_current_user)):
         "total_missing": len(missing_locations)
     }
 
+# Statistics Routes
+@api_router.post("/statistics/generate")
+async def generate_statistics(query: StatisticsQuery, current_user: User = Depends(get_current_user)):
+    """Generate custom statistics based on query parameters"""
+    
+    # Check if user has access to statistics
+    if "statistics" not in current_user.page_permissions and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Access to statistics page denied")
+    
+    # Build aggregation pipeline
+    pipeline = []
+    
+    # Match conditions
+    match_conditions = {}
+    
+    # Date filtering
+    if query.date_from or query.date_to:
+        date_filter = {}
+        if query.date_from:
+            date_filter["$gte"] = datetime.fromisoformat(query.date_from.replace("Z", "+00:00"))
+        if query.date_to:
+            date_filter["$lte"] = datetime.fromisoformat(query.date_to.replace("Z", "+00:00"))
+        match_conditions["submitted_at"] = date_filter
+    
+    # Location filtering
+    if query.locations:
+        match_conditions["service_location"] = {"$in": query.locations}
+    
+    # Status filtering
+    if query.status:
+        match_conditions["status"] = {"$in": query.status}
+    
+    # Template filtering
+    if query.templates:
+        match_conditions["template_id"] = {"$in": query.templates}
+    
+    # Role-based access control
+    if current_user.role in ["manager", "data_entry"]:
+        match_conditions["service_location"] = current_user.assigned_location
+    
+    if match_conditions:
+        pipeline.append({"$match": match_conditions})
+    
+    # Lookup user information for user role filtering
+    pipeline.append({
+        "$lookup": {
+            "from": "users",
+            "localField": "submitted_by",
+            "foreignField": "id",
+            "as": "user_info"
+        }
+    })
+    
+    pipeline.append({
+        "$unwind": {
+            "path": "$user_info",
+            "preserveNullAndEmptyArrays": True
+        }
+    })
+    
+    # User role filtering
+    if query.user_roles:
+        pipeline.append({
+            "$match": {
+                "user_info.role": {"$in": query.user_roles}
+            }
+        })
+    
+    # Group by specified field
+    group_id = "$service_location"  # default
+    if query.group_by == "month":
+        group_id = {"$dateToString": {"format": "%Y-%m", "date": "$submitted_at"}}
+    elif query.group_by == "template":
+        group_id = "$template_id"
+    elif query.group_by == "status":
+        group_id = "$status"
+    elif query.group_by == "user_role":
+        group_id = "$user_info.role"
+    
+    pipeline.append({
+        "$group": {
+            "_id": group_id,
+            "total_submissions": {"$sum": 1},
+            "approved_count": {
+                "$sum": {"$cond": [{"$eq": ["$status", "approved"]}, 1, 0]}
+            },
+            "reviewed_count": {
+                "$sum": {"$cond": [{"$eq": ["$status", "reviewed"]}, 1, 0]}
+            },
+            "submitted_count": {
+                "$sum": {"$cond": [{"$eq": ["$status", "submitted"]}, 1, 0]}
+            },
+            "rejected_count": {
+                "$sum": {"$cond": [{"$eq": ["$status", "rejected"]}, 1, 0]}
+            },
+            "unique_users": {"$addToSet": "$submitted_by"},
+            "latest_submission": {"$max": "$submitted_at"},
+            "earliest_submission": {"$min": "$submitted_at"}
+        }
+    })
+    
+    pipeline.append({
+        "$project": {
+            "category": "$_id",
+            "total_submissions": 1,
+            "approved_count": 1,
+            "reviewed_count": 1,
+            "submitted_count": 1,
+            "rejected_count": 1,
+            "unique_user_count": {"$size": "$unique_users"},
+            "latest_submission": 1,
+            "earliest_submission": 1,
+            "_id": 0
+        }
+    })
+    
+    pipeline.append({"$sort": {"total_submissions": -1}})
+    
+    results = await db.data_submissions.aggregate(pipeline).to_list(1000)
+    
+    # Calculate summary statistics
+    total_submissions = sum(item["total_submissions"] for item in results)
+    total_approved = sum(item["approved_count"] for item in results)
+    total_reviewed = sum(item["reviewed_count"] for item in results)
+    total_submitted = sum(item["submitted_count"] for item in results)
+    total_rejected = sum(item["rejected_count"] for item in results)
+    
+    return {
+        "query_parameters": query.dict(),
+        "summary": {
+            "total_submissions": total_submissions,
+            "total_approved": total_approved,
+            "total_reviewed": total_reviewed,
+            "total_submitted": total_submitted,
+            "total_rejected": total_rejected,
+            "approval_rate": round((total_approved / total_submissions * 100) if total_submissions > 0 else 0, 2)
+        },
+        "data": results,
+        "group_by": query.group_by
+    }
+
+@api_router.get("/statistics/options")
+async def get_statistics_options(current_user: User = Depends(get_current_user)):
+    """Get available options for statistics filtering"""
+    
+    if "statistics" not in current_user.page_permissions and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Access to statistics page denied")
+    
+    # Get all unique locations
+    locations = await db.service_locations.find({"is_active": True}).to_list(1000)
+    location_options = [{"id": loc["id"], "name": loc["name"]} for loc in locations]
+    
+    # Get all templates
+    templates = await db.form_templates.find({"is_active": True}).to_list(1000)
+    template_options = [{"id": template["id"], "name": template["name"]} for template in templates]
+    
+    # Get available user roles
+    users = await db.users.find({"is_active": True}).to_list(1000)
+    user_roles = list(set(user["role"] for user in users))
+    
+    # Status options
+    status_options = ["submitted", "reviewed", "approved", "rejected"]
+    
+    return {
+        "locations": location_options,
+        "templates": template_options,
+        "user_roles": user_roles,
+        "status_options": status_options,
+        "group_by_options": [
+            {"id": "location", "name": "Location"},
+            {"id": "month", "name": "Month"},
+            {"id": "template", "name": "Template"},
+            {"id": "status", "name": "Status"},
+            {"id": "user_role", "name": "User Role"}
+        ]
+    }
+
+# Enhanced submissions endpoint to include username
+@api_router.get("/submissions/detailed")
+async def get_detailed_submissions(
+    location: Optional[str] = None,
+    month_year: Optional[str] = None,
+    template_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get submissions with user details"""
+    query = {}
+    
+    # Role-based filtering
+    if current_user.role in ["manager", "data_entry"]:
+        query["service_location"] = current_user.assigned_location
+    elif location:
+        query["service_location"] = location
+    
+    if month_year:
+        query["month_year"] = month_year
+    if template_id:
+        query["template_id"] = template_id
+    
+    # Use aggregation to join with user data
+    pipeline = [
+        {"$match": query},
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "submitted_by",
+                "foreignField": "id",
+                "as": "submitted_user"
+            }
+        },
+        {
+            "$unwind": {
+                "path": "$submitted_user",
+                "preserveNullAndEmptyArrays": True
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "id": 1,
+                "template_id": 1,
+                "service_location": 1,
+                "month_year": 1,
+                "form_data": 1,
+                "attachments": 1,
+                "submitted_at": 1,
+                "status": 1,
+                "submitted_by": 1,
+                "submitted_by_username": {"$ifNull": ["$submitted_user.username", "Unknown User"]}
+            }
+        },
+        {"$sort": {"submitted_at": -1}}
+    ]
+    
+    submissions = await db.data_submissions.aggregate(pipeline).to_list(1000)
+    return submissions
+
 @api_router.get("/")
 async def root():
     return {"message": "CLIENT SERVICES Platform API"}
