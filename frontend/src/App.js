@@ -1105,9 +1105,10 @@ const UserManagement = () => {
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       user.role === 'admin' ? 'bg-red-100 text-red-800' :
                       user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                      user.role === 'statistician' ? 'bg-purple-100 text-purple-800' :
                       'bg-green-100 text-green-800'
                     }`}>
-                      {user.role}
+                      {availableRoles.find(r => r.name === user.role)?.display_name || user.role}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
