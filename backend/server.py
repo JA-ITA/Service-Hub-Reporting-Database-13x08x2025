@@ -199,6 +199,27 @@ def require_role(allowed_roles: List[str]):
 
 # Initialize default data
 async def initialize_default_data():
+    # Create default roles if not exist
+    default_roles = [
+        UserRole(name="admin", display_name="Administrator", description="Full system access", 
+                permissions=["dashboard", "users", "locations", "templates", "reports", "submit", "statistics", "roles"], 
+                is_system_role=True, created_by="system"),
+        UserRole(name="manager", display_name="Service Hub Manager", description="Manage assigned location", 
+                permissions=["dashboard", "submit", "reports"], 
+                is_system_role=True, created_by="system"),
+        UserRole(name="data_entry", display_name="Data Entry Officer", description="Submit data only", 
+                permissions=["dashboard", "submit"], 
+                is_system_role=True, created_by="system"),
+        UserRole(name="statistician", display_name="Statistician", description="View statistics and reports", 
+                permissions=["dashboard", "statistics", "reports"], 
+                is_system_role=True, created_by="system")
+    ]
+    
+    for role in default_roles:
+        existing_role = await db.user_roles.find_one({"name": role.name})
+        if not existing_role:
+            await db.user_roles.insert_one(role.dict())
+
     # Create default admin if not exists
     admin_exists = await db.users.find_one({"username": "admin"})
     if not admin_exists:
