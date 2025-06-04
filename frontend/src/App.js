@@ -1881,7 +1881,7 @@ const Reports = ({ user }) => {
                         {submission.month_year}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {submission.submitted_by}
+                        {submission.submitted_by_username}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(submission.submitted_at).toLocaleDateString()}
