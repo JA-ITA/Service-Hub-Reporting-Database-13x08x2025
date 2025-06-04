@@ -509,6 +509,298 @@ const Dashboard = ({ user }) => {
   );
 };
 
+// Role Management Component (Admin only)
+const RoleManagement = () => {
+  const [roles, setRoles] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingRole, setEditingRole] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    display_name: '',
+    description: '',
+    permissions: []
+  });
+
+  const availablePermissions = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'users', label: 'Manage Users' },
+    { id: 'roles', label: 'Manage Roles' },
+    { id: 'locations', label: 'Manage Locations' },
+    { id: 'templates', label: 'Manage Templates' },
+    { id: 'reports', label: 'Reports' },
+    { id: 'submit', label: 'Submit Data' },
+    { id: 'statistics', label: 'Statistics' }
+  ];
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  const fetchRoles = async () => {
+    try {
+      const response = await axios.get(`${API}/roles`, { headers: getAuthHeader() });
+      setRoles(response.data || []);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+    }
+  };
+
+  const fetchRoleForEdit = async (roleId) => {
+    try {
+      const response = await axios.get(`${API}/roles/${roleId}`, { headers: getAuthHeader() });
+      const role = response.data;
+      setFormData({
+        name: role.name,
+        display_name: role.display_name,
+        description: role.description || '',
+        permissions: role.permissions || []
+      });
+      setEditingRole(role);
+      setShowForm(true);
+    } catch (error) {
+      alert('Error fetching role for editing: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingRole) {
+        await axios.put(`${API}/roles/${editingRole.id}`, formData, { headers: getAuthHeader() });
+        alert('Role updated successfully!');
+      } else {
+        await axios.post(`${API}/roles`, formData, { headers: getAuthHeader() });
+        alert('Role created successfully!');
+      }
+      resetForm();
+      fetchRoles();
+    } catch (error) {
+      alert(`Error ${editingRole ? 'updating' : 'creating'} role: ` + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', display_name: '', description: '', permissions: [] });
+    setShowForm(false);
+    setEditingRole(null);
+  };
+
+  const handleEdit = (role) => {
+    if (role.is_system_role) {
+      alert('System roles cannot be edited');
+      return;
+    }
+    fetchRoleForEdit(role.id);
+  };
+
+  const handleDelete = async (roleId, roleName, isSystemRole) => {
+    if (isSystemRole) {
+      alert('System roles cannot be deleted');
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete the role "${roleName}"?`)) {
+      try {
+        await axios.delete(`${API}/roles/${roleId}`, { headers: getAuthHeader() });
+        alert('Role deleted successfully!');
+        fetchRoles();
+      } catch (error) {
+        alert('Error deleting role: ' + (error.response?.data?.detail || error.message));
+      }
+    }
+  };
+
+  const handlePermissionChange = (permissionId, isChecked) => {
+    if (isChecked) {
+      setFormData({
+        ...formData,
+        permissions: [...formData.permissions, permissionId]
+      });
+    } else {
+      setFormData({
+        ...formData,
+        permissions: formData.permissions.filter(p => p !== permissionId)
+      });
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Role Management</h2>
+        <button
+          onClick={() => {
+            resetForm();
+            setShowForm(!showForm);
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          {showForm ? 'Cancel' : 'Create New Role'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white p-6 rounded-lg shadow mb-6">
+          <h3 className="text-lg font-semibold mb-4">
+            {editingRole ? `Edit Role: ${editingRole.display_name}` : 'Create New Role'}
+          </h3>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Role Name (ID)</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
+                  placeholder="role_name"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">Lowercase letters, numbers, and underscores only</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Display Name</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.display_name}
+                  onChange={(e) => setFormData({...formData, display_name: e.target.value})}
+                  placeholder="Role Display Name"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                rows="3"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                placeholder="Describe the role and its purpose"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Permissions</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {availablePermissions.map(permission => (
+                  <label key={permission.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={formData.permissions.includes(permission.id)}
+                      onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
+                    />
+                    <span className="text-sm text-gray-700">{permission.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex space-x-4">
+              <button
+                type="submit"
+                className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                {editingRole ? 'Update Role' : 'Create Role'}
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="bg-white rounded-lg shadow">
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-auto">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Display Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Permissions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {roles.map(role => (
+                <tr key={role.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {role.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {role.display_name}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    {role.description || 'No description'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    <div className="flex flex-wrap gap-1">
+                      {role.permissions?.slice(0, 3).map(permission => (
+                        <span key={permission} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                          {permission}
+                        </span>
+                      ))}
+                      {role.permissions?.length > 3 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                          +{role.permissions.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      role.is_system_role 
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {role.is_system_role ? 'System' : 'Custom'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button
+                      onClick={() => handleEdit(role)}
+                      className={`${
+                        role.is_system_role 
+                          ? 'text-gray-400 cursor-not-allowed' 
+                          : 'text-blue-600 hover:text-blue-900'
+                      }`}
+                      disabled={role.is_system_role}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(role.id, role.display_name, role.is_system_role)}
+                      className={`${
+                        role.is_system_role 
+                          ? 'text-gray-400 cursor-not-allowed' 
+                          : 'text-red-600 hover:text-red-900'
+                      }`}
+                      disabled={role.is_system_role}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // User Management Component (Admin only)
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
