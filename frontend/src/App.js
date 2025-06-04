@@ -93,10 +93,6 @@ const Login = ({ onLogin }) => {
             Sign In
           </button>
         </form>
-        
-        <div className="mt-4 text-sm text-gray-600 text-center">
-          <p>Default Admin: admin / admin123</p>
-        </div>
       </div>
     </div>
   );
