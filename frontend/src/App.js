@@ -624,6 +624,14 @@ const UserManagement = () => {
     setEditingUser(null);
   };
 
+  const handleRoleChange = (newRole) => {
+    setNewUser({
+      ...newUser, 
+      role: newRole,
+      page_permissions: getDefaultPermissions(newRole)
+    });
+  };
+
   const handleEdit = (user) => {
     fetchUserForEdit(user.id);
   };
