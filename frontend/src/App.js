@@ -229,6 +229,7 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({
     username: '',
     password: '',
@@ -259,16 +260,62 @@ const UserManagement = () => {
     }
   };
 
+  const fetchUserForEdit = async (userId) => {
+    try {
+      const response = await axios.get(`${API}/users/${userId}`, { headers: getAuthHeader() });
+      const user = response.data;
+      setNewUser({
+        username: user.username,
+        password: '', // Don't prefill password for security
+        role: user.role,
+        assigned_location: user.assigned_location || ''
+      });
+      setEditingUser(user);
+      setShowForm(true);
+    } catch (error) {
+      alert('Error fetching user for editing: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API}/users`, newUser, { headers: getAuthHeader() });
-      setNewUser({ username: '', password: '', role: 'data_entry', assigned_location: '' });
-      setShowForm(false);
+      if (editingUser) {
+        // Update existing user
+        const updateData = {
+          username: newUser.username,
+          role: newUser.role,
+          assigned_location: newUser.assigned_location
+        };
+        
+        // Only include password if it's provided
+        if (newUser.password.trim()) {
+          updateData.password = newUser.password;
+        }
+        
+        await axios.put(`${API}/users/${editingUser.id}`, updateData, { headers: getAuthHeader() });
+        alert('User updated successfully!');
+      } else {
+        // Create new user
+        await axios.post(`${API}/users`, newUser, { headers: getAuthHeader() });
+        alert('User created successfully!');
+      }
+      
+      resetForm();
       fetchUsers();
     } catch (error) {
-      alert('Error creating user: ' + (error.response?.data?.detail || error.message));
+      alert(`Error ${editingUser ? 'updating' : 'creating'} user: ` + (error.response?.data?.detail || error.message));
     }
+  };
+
+  const resetForm = () => {
+    setNewUser({ username: '', password: '', role: 'data_entry', assigned_location: '' });
+    setShowForm(false);
+    setEditingUser(null);
+  };
+
+  const handleEdit = (user) => {
+    fetchUserForEdit(user.id);
   };
 
   const handleDeleteUser = async (userId) => {
@@ -287,7 +334,10 @@ const UserManagement = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">User Management</h2>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            resetForm();
+            setShowForm(!showForm);
+          }}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           {showForm ? 'Cancel' : 'Add New User'}
@@ -296,7 +346,9 @@ const UserManagement = () => {
 
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-4">Create New User</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            {editingUser ? `Edit User: ${editingUser.username}` : 'Create New User'}
+          </h3>
           <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Username</label>
@@ -310,13 +362,15 @@ const UserManagement = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Password {editingUser && <span className="text-sm text-gray-500">(leave blank to keep current)</span>}
+              </label>
               <input
                 type="password"
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
                 value={newUser.password}
                 onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                required
+                required={!editingUser}
               />
             </div>
             
@@ -347,12 +401,19 @@ const UserManagement = () => {
               </select>
             </div>
             
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 flex space-x-4">
               <button
                 type="submit"
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
-                Create User
+                {editingUser ? 'Update User' : 'Create User'}
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Cancel
               </button>
             </div>
           </form>
@@ -392,7 +453,13 @@ const UserManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(user.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button
+                      onClick={() => handleEdit(user)}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      Edit
+                    </button>
                     <button
                       onClick={() => handleDeleteUser(user.id)}
                       className="text-red-600 hover:text-red-900"
