@@ -570,6 +570,7 @@ const TemplateManagement = () => {
   const [templates, setTemplates] = useState([]);
   const [locations, setLocations] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -600,6 +601,23 @@ const TemplateManagement = () => {
     }
   };
 
+  const fetchTemplateForEdit = async (templateId) => {
+    try {
+      const response = await axios.get(`${API}/templates/${templateId}`, { headers: getAuthHeader() });
+      const template = response.data;
+      setFormData({
+        name: template.name,
+        description: template.description || '',
+        fields: template.fields || [],
+        assigned_locations: template.assigned_locations || []
+      });
+      setEditingTemplate(template);
+      setShowForm(true);
+    } catch (error) {
+      alert('Error fetching template: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
   const addField = () => {
     setFormData({
       ...formData,
@@ -621,13 +639,28 @@ const TemplateManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API}/templates`, formData, { headers: getAuthHeader() });
-      setFormData({ name: '', description: '', fields: [], assigned_locations: [] });
-      setShowForm(false);
+      if (editingTemplate) {
+        await axios.put(`${API}/templates/${editingTemplate.id}`, formData, { headers: getAuthHeader() });
+        alert('Template updated successfully!');
+      } else {
+        await axios.post(`${API}/templates`, formData, { headers: getAuthHeader() });
+        alert('Template created successfully!');
+      }
+      resetForm();
       fetchTemplates();
     } catch (error) {
-      alert('Error creating template: ' + (error.response?.data?.detail || error.message));
+      alert(`Error ${editingTemplate ? 'updating' : 'creating'} template: ` + (error.response?.data?.detail || error.message));
     }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', description: '', fields: [], assigned_locations: [] });
+    setShowForm(false);
+    setEditingTemplate(null);
+  };
+
+  const handleEdit = (template) => {
+    fetchTemplateForEdit(template.id);
   };
 
   const handleDelete = async (templateId) => {
@@ -646,7 +679,10 @@ const TemplateManagement = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Data Collection Templates</h2>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            resetForm();
+            setShowForm(!showForm);
+          }}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           {showForm ? 'Cancel' : 'Create New Template'}
@@ -655,7 +691,9 @@ const TemplateManagement = () => {
 
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-4">Create New Template</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            {editingTemplate ? `Edit Template: ${editingTemplate.name}` : 'Create New Template'}
+          </h3>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -673,7 +711,7 @@ const TemplateManagement = () => {
                 <label className="block text-sm font-medium text-gray-700">Assigned Locations</label>
                 <select
                   multiple
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md h-20"
                   value={formData.assigned_locations}
                   onChange={(e) => setFormData({
                     ...formData,
@@ -711,7 +749,7 @@ const TemplateManagement = () => {
               </div>
               
               {formData.fields.map((field, index) => (
-                <div key={index} className="border p-4 rounded mb-4">
+                <div key={index} className="border p-4 rounded mb-4 bg-gray-50">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Field Name</label>
@@ -756,7 +794,7 @@ const TemplateManagement = () => {
                         <input
                           type="checkbox"
                           className="mr-2"
-                          checked={field.required}
+                          checked={field.required || false}
                           onChange={(e) => updateField(index, {...field, required: e.target.checked})}
                         />
                         <span className="text-sm text-gray-700">Required</span>
@@ -770,16 +808,41 @@ const TemplateManagement = () => {
                       </button>
                     </div>
                   </div>
+                  
+                  {field.type === 'select' && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700">Options (comma-separated)</label>
+                      <input
+                        type="text"
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        value={field.options?.join(', ') || ''}
+                        onChange={(e) => updateField(index, {
+                          ...field, 
+                          options: e.target.value.split(',').map(opt => opt.trim()).filter(opt => opt)
+                        })}
+                        placeholder="Option 1, Option 2, Option 3"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
             
-            <button
-              type="submit"
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              Create Template
-            </button>
+            <div className="flex space-x-4">
+              <button
+                type="submit"
+                className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                {editingTemplate ? 'Update Template' : 'Create Template'}
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -793,6 +856,7 @@ const TemplateManagement = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fields</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Locations</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
@@ -811,7 +875,16 @@ const TemplateManagement = () => {
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {template.assigned_locations.join(', ') || 'None'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(template.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button
+                      onClick={() => handleEdit(template)}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      Edit
+                    </button>
                     <button
                       onClick={() => handleDelete(template.id)}
                       className="text-red-600 hover:text-red-900"
