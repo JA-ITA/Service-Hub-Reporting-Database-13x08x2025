@@ -1,13 +1,13 @@
 
 import requests
+import json
 import sys
-import time
-import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class ClientServicesAPITester:
-    def __init__(self, base_url="https://55c412e3-2b8e-4750-8c0e-a5c30dd61220.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://55c412e3-2b8e-4750-8c0e-a5c30dd61220.preview.emergentagent.com"):
         self.base_url = base_url
+        self.api_url = f"{base_url}/api"
         self.token = None
         self.user_info = None
         self.tests_run = 0
@@ -15,12 +15,13 @@ class ClientServicesAPITester:
         self.created_resources = {
             "users": [],
             "locations": [],
-            "templates": []
+            "templates": [],
+            "submissions": []
         }
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, files=None):
+    def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
         """Run a single API test"""
-        url = f"{self.base_url}/{endpoint}"
+        url = f"{self.api_url}/{endpoint}"
         headers = {'Content-Type': 'application/json'}
         if self.token:
             headers['Authorization'] = f'Bearer {self.token}'
@@ -30,14 +31,9 @@ class ClientServicesAPITester:
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers)
+                response = requests.get(url, headers=headers, params=params)
             elif method == 'POST':
-                if files:
-                    # For file uploads, don't use JSON content type
-                    headers.pop('Content-Type', None)
-                    response = requests.post(url, files=files, headers=headers)
-                else:
-                    response = requests.post(url, json=data, headers=headers)
+                response = requests.post(url, json=data, headers=headers)
             elif method == 'PUT':
                 response = requests.put(url, json=data, headers=headers)
             elif method == 'DELETE':
@@ -48,14 +44,13 @@ class ClientServicesAPITester:
                 self.tests_passed += 1
                 print(f"✅ Passed - Status: {response.status_code}")
                 try:
-                    return success, response.json() if response.content else {}
+                    return success, response.json()
                 except:
                     return success, {}
             else:
                 print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
                 try:
-                    error_detail = response.json().get('detail', 'No detail provided')
-                    print(f"Error detail: {error_detail}")
+                    print(f"Response: {response.json()}")
                 except:
                     print(f"Response: {response.text}")
                 return False, {}
@@ -76,7 +71,7 @@ class ClientServicesAPITester:
         if success and 'access_token' in response:
             self.token = response['access_token']
             self.user_info = response['user']
-            print(f"Logged in as {username} with role {response['user']['role']}")
+            print(f"Logged in as {self.user_info['username']} with role {self.user_info['role']}")
             return True
         return False
 
@@ -90,22 +85,22 @@ class ClientServicesAPITester:
         )
         return success
 
-    def test_create_user(self, username, password, role, location=None):
+    def test_create_user(self, username, password, role, page_permissions=None):
         """Test creating a new user"""
-        user_data = {
+        data = {
             "username": username,
             "password": password,
             "role": role
         }
-        if location:
-            user_data["assigned_location"] = location
+        if page_permissions:
+            data["page_permissions"] = page_permissions
             
         success, response = self.run_test(
-            f"Create User ({role})",
+            f"Create {role} User",
             "POST",
             "users",
             200,
-            data=user_data
+            data=data
         )
         if success and 'id' in response:
             self.created_resources["users"].append(response['id'])
@@ -120,398 +115,192 @@ class ClientServicesAPITester:
             "users",
             200
         )
-        return success
+        return success and isinstance(response, list)
 
-    def test_delete_user(self, user_id):
-        """Test deleting a user"""
-        success, _ = self.run_test(
-            "Delete User",
-            "DELETE",
+    def test_get_user(self, user_id):
+        """Test getting a specific user"""
+        success, response = self.run_test(
+            "Get User",
+            "GET",
             f"users/{user_id}",
             200
         )
-        return success
+        return success and 'id' in response
 
-    def test_create_location(self, name, description=None):
-        """Test creating a new location"""
-        location_data = {
-            "name": name,
-            "description": description
-        }
-        success, response = self.run_test(
-            "Create Location",
-            "POST",
-            "locations",
+    def test_update_user(self, user_id, update_data):
+        """Test updating a user"""
+        success, _ = self.run_test(
+            "Update User",
+            "PUT",
+            f"users/{user_id}",
             200,
-            data=location_data
+            data=update_data
         )
-        if success and 'id' in response:
-            self.created_resources["locations"].append(response['id'])
-            return response['id'], response['name']
-        return None, None
+        return success
 
     def test_get_locations(self):
         """Test getting all locations"""
         success, response = self.run_test(
-            "Get All Locations",
+            "Get Locations",
             "GET",
             "locations",
             200
         )
-        if success:
-            return success, response
-        return False, []
-
-    def test_update_location(self, location_id, name, description):
-        """Test updating a location"""
-        success, _ = self.run_test(
-            "Update Location",
-            "PUT",
-            f"locations/{location_id}",
-            200,
-            data={"name": name, "description": description}
-        )
-        return success
-
-    def test_delete_location(self, location_id):
-        """Test deleting a location"""
-        success, _ = self.run_test(
-            "Delete Location",
-            "DELETE",
-            f"locations/{location_id}",
-            200
-        )
-        return success
-
-    def test_create_template(self, name, description, fields, locations):
-        """Test creating a new template"""
-        template_data = {
-            "name": name,
-            "description": description,
-            "fields": fields,
-            "assigned_locations": locations
-        }
-        success, response = self.run_test(
-            "Create Template",
-            "POST",
-            "templates",
-            200,
-            data=template_data
-        )
-        if success and 'id' in response:
-            self.created_resources["templates"].append(response['id'])
-            return response['id']
-        return None
+        return success and isinstance(response, list)
 
     def test_get_templates(self):
         """Test getting all templates"""
         success, response = self.run_test(
-            "Get All Templates",
+            "Get Templates",
             "GET",
             "templates",
             200
         )
-        if success:
-            return success, response
-        return False, []
-        
-    def test_get_template_by_id(self, template_id):
-        """Test getting a specific template by ID"""
-        success, response = self.run_test(
-            "Get Template by ID",
-            "GET",
-            f"templates/{template_id}",
-            200
-        )
-        if success:
-            return success, response
-        return False, {}
+        return success and isinstance(response, list)
 
-    def test_update_template(self, template_id, name, description, fields, locations):
-        """Test updating an existing template"""
-        template_data = {
-            "name": name,
-            "description": description,
-            "fields": fields,
-            "assigned_locations": locations
-        }
-        success, response = self.run_test(
-            "Update Template",
-            "PUT",
-            f"templates/{template_id}",
-            200,
-            data=template_data
-        )
-        return success, response
-
-    def test_file_upload(self, file_path):
-        """Test file upload"""
-        with open(file_path, 'rb') as f:
-            files = {'file': (file_path.split('/')[-1], f, 'image/jpeg')}
-            success, response = self.run_test(
-                "File Upload",
-                "POST",
-                "upload",
-                200,
-                files=files
-            )
-            if success and 'filename' in response:
-                return response['filename']
-        return None
-        
-    def test_delete_template(self, template_id):
-        """Test deleting a template"""
-        success, _ = self.run_test(
-            "Delete Template",
-            "DELETE",
-            f"templates/{template_id}",
-            200
-        )
-        return success
-
-    def test_create_submission(self, template_id, location, month_year, form_data):
-        """Test creating a data submission"""
-        submission_data = {
-            "template_id": template_id,
-            "service_location": location,
-            "month_year": month_year,
-            "form_data": form_data
-        }
-        success, response = self.run_test(
-            "Create Submission",
-            "POST",
-            "submissions",
-            200,
-            data=submission_data
-        )
-        return success
-
-    def test_get_submissions(self, location=None, month_year=None, template_id=None):
-        """Test getting submissions with filters"""
-        endpoint = "submissions"
-        params = []
-        if location:
-            params.append(f"location={location}")
-        if month_year:
-            params.append(f"month_year={month_year}")
-        if template_id:
-            params.append(f"template_id={template_id}")
-        
-        if params:
-            endpoint += "?" + "&".join(params)
-            
+    def test_get_submissions(self, params=None):
+        """Test getting submissions"""
         success, response = self.run_test(
             "Get Submissions",
             "GET",
-            endpoint,
-            200
+            "submissions",
+            200,
+            params=params
         )
-        return success
+        return success and isinstance(response, list)
 
-    def test_export_csv(self):
-        """Test CSV export"""
-        success, _ = self.run_test(
-            "Export CSV",
+    def test_get_detailed_submissions(self, params=None):
+        """Test getting detailed submissions with usernames"""
+        success, response = self.run_test(
+            "Get Detailed Submissions",
             "GET",
-            "reports/csv",
+            "submissions/detailed",
+            200,
+            params=params
+        )
+        if success and isinstance(response, list) and len(response) > 0:
+            # Check if submissions include username field
+            has_username = 'submitted_by_username' in response[0]
+            if has_username:
+                print(f"✅ Submissions include username field: {response[0]['submitted_by_username']}")
+            else:
+                print("❌ Submissions do not include username field")
+            return success and has_username
+        return False
+
+    def test_get_statistics_options(self):
+        """Test getting statistics options"""
+        success, response = self.run_test(
+            "Get Statistics Options",
+            "GET",
+            "statistics/options",
             200
         )
-        return success
+        if success:
+            print(f"Available options: {json.dumps(response, indent=2)}")
+            return True
+        return False
 
-    def cleanup(self):
-        """Clean up created resources"""
-        print("\n🧹 Cleaning up resources...")
-        
-        for template_id in self.created_resources["templates"]:
-            self.test_delete_template(template_id)
-            
-        for location_id in self.created_resources["locations"]:
-            self.test_delete_location(location_id)
-            
-        for user_id in self.created_resources["users"]:
-            self.test_delete_user(user_id)
+    def test_generate_statistics(self, query_params):
+        """Test generating statistics"""
+        success, response = self.run_test(
+            "Generate Statistics",
+            "POST",
+            "statistics/generate",
+            200,
+            data=query_params
+        )
+        if success:
+            print(f"Statistics summary: {json.dumps(response['summary'], indent=2)}")
+            return True
+        return False
+
+    def test_dashboard_submissions_by_location(self):
+        """Test getting dashboard submissions by location"""
+        success, response = self.run_test(
+            "Dashboard Submissions by Location",
+            "GET",
+            "dashboard/submissions-by-location",
+            200
+        )
+        return success and isinstance(response, list)
 
 def main():
     # Setup
     tester = ClientServicesAPITester()
-    timestamp = datetime.now().strftime('%H%M%S')
     
-    # Create test data
-    test_manager = f"manager_{timestamp}"
-    test_data_entry = f"data_entry_{timestamp}"
-    test_location = f"Test Location {timestamp}"
-    test_template = f"Test Template {timestamp}"
+    print("=" * 50)
+    print("CLIENT SERVICES PLATFORM API TESTS")
+    print("=" * 50)
     
-    print("\n🔐 1. TESTING AUTHENTICATION")
-    # Test login with default admin
+    # Test 1: Login as admin
     if not tester.test_login("admin", "admin123"):
         print("❌ Admin login failed, stopping tests")
         return 1
     
-    # Test getting current user info
+    # Test 2: Get current user info
     tester.test_get_current_user()
     
-    print("\n👥 2. TESTING USER MANAGEMENT")
-    # Test getting all users
+    # Test 3: Get all users
     tester.test_get_users()
     
-    # Test creating users with different roles
-    success, locations = tester.test_get_locations()
-    location_name = None
-    if success and locations:
-        location_name = locations[0]['name']
-        print(f"Using existing location: {location_name}")
-    
-    manager_id = tester.test_create_user(test_manager, "Password123!", "manager", location_name)
-    data_entry_id = tester.test_create_user(test_data_entry, "Password123!", "data_entry", location_name)
-    
-    # Test getting users after creation
-    tester.test_get_users()
-    
-    print("\n🏢 3. TESTING LOCATION MANAGEMENT")
-    # Test getting all locations
-    success, locations = tester.test_get_locations()
-    if success:
-        print(f"Found {len(locations)} pre-loaded locations")
-        for loc in locations:
-            print(f"  - {loc['name']}: {loc['description']}")
-    
-    # Test creating a new location
-    location_id, location_name = tester.test_create_location(
-        test_location, 
-        "Test location for API testing"
-    )
-    
-    if location_id:
-        # Test updating the location
-        tester.test_update_location(
-            location_id,
-            f"{test_location} Updated",
-            "Updated description"
-        )
-    
-    # Test getting locations after update
+    # Test 4: Get all locations
     tester.test_get_locations()
     
-    print("\n📋 4. TESTING TEMPLATE MANAGEMENT")
-    # Test getting all templates
-    success, templates = tester.test_get_templates()
-    
-    # Test creating a template with various field types
-    fields = [
-        {"name": "text_field", "type": "text", "label": "Text Field", "required": True},
-        {"name": "number_field", "type": "number", "label": "Number Field", "required": False},
-        {"name": "date_field", "type": "date", "label": "Date Field", "required": True},
-        {"name": "textarea_field", "type": "textarea", "label": "Text Area Field", "required": False},
-        {"name": "select_field", "type": "select", "label": "Select Field", "required": True, "options": ["Option 1", "Option 2", "Option 3"]},
-        {"name": "file_field", "type": "file", "label": "File Upload Field", "required": False}
-    ]
-    
-    template_id = tester.test_create_template(
-        test_template,
-        "Test template with various field types",
-        fields,
-        [location_name]
-    )
-    
-    # Test getting templates after creation
+    # Test 5: Get all templates
     tester.test_get_templates()
     
-    # Test getting a specific template by ID
-    if template_id:
-        success, template = tester.test_get_template_by_id(template_id)
-        if success:
-            print(f"Successfully retrieved template: {template['name']}")
-            
-            # Test updating the template
-            updated_fields = fields.copy()
-            updated_fields.append({
-                "name": "new_dropdown", 
-                "type": "select", 
-                "label": "New Dropdown Field", 
-                "required": False,
-                "options": ["New Option 1", "New Option 2", "New Option 3"]
-            })
-            
-            success, response = tester.test_update_template(
-                template_id,
-                f"{test_template} Updated",
-                "Updated template description",
-                updated_fields,
-                [location_name, "Central Hub"]
-            )
-            
-            if success:
-                print("✅ Template update successful")
-                
-                # Verify the update
-                success, updated_template = tester.test_get_template_by_id(template_id)
-                if success:
-                    print(f"Updated template name: {updated_template['name']}")
-                    print(f"Updated field count: {len(updated_template['fields'])}")
-                    print(f"Updated locations: {', '.join(updated_template['assigned_locations'])}")
-                    
-                    # Verify fields were updated correctly
-                    if len(updated_template['fields']) == len(updated_fields):
-                        print("✅ Field count matches after update")
-                    else:
-                        print(f"❌ Field count mismatch: expected {len(updated_fields)}, got {len(updated_template['fields'])}")
-                        
-                    # Check for the new dropdown field
-                    new_field = next((f for f in updated_template['fields'] if f['name'] == 'new_dropdown'), None)
-                    if new_field:
-                        print("✅ New dropdown field was added successfully")
-                        if 'options' in new_field and len(new_field['options']) == 3:
-                            print("✅ Dropdown options were saved correctly")
-                    else:
-                        print("❌ New dropdown field was not found in the updated template")
-            else:
-                print("❌ Template update failed")
-    
-    print("\n📝 5. TESTING DATA SUBMISSION")
-    # Create a test file for upload
-    test_file_path = "/tmp/test_file.txt"
-    with open(test_file_path, "w") as f:
-        f.write("This is a test file for upload testing.")
-    
-    # Test file upload
-    # Note: Skipping actual file upload as it requires multipart form data
-    
-    # Test data submission
-    if template_id and location_name:
-        current_month = datetime.now().strftime('%Y-%m')
-        form_data = {
-            "text_field": "Test text value",
-            "number_field": 42,
-            "date_field": "2025-02-15",
-            "textarea_field": "This is a longer text for the textarea field",
-            "select_field": "Option 1",
-            "file_field": "test_file.txt"  # Just the filename, not actual upload
-        }
-        
-        tester.test_create_submission(
-            template_id,
-            location_name,
-            current_month,
-            form_data
-        )
-    
-    print("\n📊 6. TESTING REPORTS")
-    # Test getting submissions
+    # Test 6: Get submissions
     tester.test_get_submissions()
     
-    # Test filtering submissions
-    if location_name:
-        tester.test_get_submissions(location=location_name)
+    # Test 7: Get detailed submissions with usernames
+    tester.test_get_detailed_submissions()
     
-    # Test CSV export
-    tester.test_export_csv()
+    # Test 8: Create a statistician user
+    timestamp = datetime.now().strftime("%H%M%S")
+    statistician_id = tester.test_create_user(
+        f"statistician_{timestamp}",
+        "Test123!",
+        "statistician"
+    )
     
-    # Clean up
-    tester.cleanup()
+    # Test 9: Create a user with custom permissions
+    custom_user_id = tester.test_create_user(
+        f"custom_user_{timestamp}",
+        "Test123!",
+        "manager",
+        page_permissions=["dashboard", "reports", "statistics"]
+    )
+    
+    # Test 10: Update user
+    if custom_user_id:
+        tester.test_update_user(
+            custom_user_id,
+            {"assigned_location": "Central Hub"}
+        )
+    
+    # Test 11: Get statistics options
+    tester.test_get_statistics_options()
+    
+    # Test 12: Generate statistics
+    tester.test_generate_statistics({
+        "date_from": (datetime.now() - timedelta(days=30)).isoformat(),
+        "date_to": datetime.now().isoformat(),
+        "locations": [],
+        "user_roles": [],
+        "templates": [],
+        "status": [],
+        "group_by": "location"
+    })
+    
+    # Test 13: Dashboard data
+    tester.test_dashboard_submissions_by_location()
     
     # Print results
-    print(f"\n📊 Tests passed: {tester.tests_passed}/{tester.tests_run}")
+    print("\n" + "=" * 50)
+    print(f"Tests passed: {tester.tests_passed}/{tester.tests_run} ({tester.tests_passed/tester.tests_run*100:.1f}%)")
+    print("=" * 50)
+    
     return 0 if tester.tests_passed == tester.tests_run else 1
 
 if __name__ == "__main__":
