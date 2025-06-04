@@ -104,6 +104,7 @@ const Navigation = ({ user, activeTab, setActiveTab, onLogout }) => {
     const allTabs = [
       { id: 'dashboard', label: 'Dashboard' },
       { id: 'users', label: 'Manage Users' },
+      { id: 'roles', label: 'Manage Roles' },
       { id: 'locations', label: 'Manage Locations' },
       { id: 'templates', label: 'Manage Templates' },
       { id: 'reports', label: 'Reports' },
@@ -118,7 +119,7 @@ const Navigation = ({ user, activeTab, setActiveTab, onLogout }) => {
 
     // Fallback to role-based tabs if no permissions defined
     const roleTabs = {
-      admin: ['dashboard', 'users', 'locations', 'templates', 'reports', 'submit', 'statistics'],
+      admin: ['dashboard', 'users', 'roles', 'locations', 'templates', 'reports', 'submit', 'statistics'],
       manager: ['dashboard', 'submit', 'reports'],
       data_entry: ['dashboard', 'submit'],
       statistician: ['dashboard', 'statistics', 'reports']
