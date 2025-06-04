@@ -1984,6 +1984,354 @@ const Reports = ({ user }) => {
   );
 };
 
+// Statistics Component
+const Statistics = ({ user }) => {
+  const [statisticsData, setStatisticsData] = useState(null);
+  const [options, setOptions] = useState({});
+  const [query, setQuery] = useState({
+    date_from: '',
+    date_to: '',
+    locations: [],
+    user_roles: [],
+    templates: [],
+    status: [],
+    group_by: 'location'
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchOptions();
+  }, []);
+
+  const fetchOptions = async () => {
+    try {
+      const response = await axios.get(`${API}/statistics/options`, { headers: getAuthHeader() });
+      setOptions(response.data);
+    } catch (error) {
+      console.error('Error fetching statistics options:', error);
+    }
+  };
+
+  const generateReport = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API}/statistics/generate`, query, { headers: getAuthHeader() });
+      setStatisticsData(response.data);
+    } catch (error) {
+      alert('Error generating statistics: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getChartData = () => {
+    if (!statisticsData || !statisticsData.data) return null;
+
+    const labels = statisticsData.data.map(item => item.category || 'Unknown');
+    const data = statisticsData.data.map(item => item.total_submissions);
+    
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Total Submissions',
+          data,
+          backgroundColor: [
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(255, 205, 86, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+          ],
+          borderColor: [
+            'rgba(54, 162, 235, 1)',
+            'rgba(255, 99, 132, 1)',
+            'rgba(255, 205, 86, 1)',
+            'rgba(75, 192, 192, 1)',
+            'rgba(153, 102, 255, 1)',
+            'rgba(255, 159, 64, 1)',
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
+  const getStatusChartData = () => {
+    if (!statisticsData || !statisticsData.summary) return null;
+
+    return {
+      labels: ['Approved', 'Reviewed', 'Submitted', 'Rejected'],
+      datasets: [
+        {
+          data: [
+            statisticsData.summary.total_approved,
+            statisticsData.summary.total_reviewed,
+            statisticsData.summary.total_submitted,
+            statisticsData.summary.total_rejected,
+          ],
+          backgroundColor: [
+            'rgba(34, 197, 94, 0.8)',
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(251, 191, 36, 0.8)',
+            'rgba(239, 68, 68, 0.8)',
+          ],
+        },
+      ],
+    };
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: `Statistics by ${query.group_by}`,
+      },
+    },
+  };
+
+  const pieChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'right',
+      },
+      title: {
+        display: true,
+        text: 'Submission Status Distribution',
+      },
+    },
+  };
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-6">Statistics</h2>
+
+      {/* Filters */}
+      <div className="bg-white p-6 rounded-lg shadow mb-6">
+        <h3 className="text-lg font-semibold mb-4">Generate Custom Report</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Date From</label>
+            <input
+              type="date"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              value={query.date_from}
+              onChange={(e) => setQuery({...query, date_from: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Date To</label>
+            <input
+              type="date"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              value={query.date_to}
+              onChange={(e) => setQuery({...query, date_to: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Group By</label>
+            <select
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              value={query.group_by}
+              onChange={(e) => setQuery({...query, group_by: e.target.value})}
+            >
+              {options.group_by_options?.map(option => (
+                <option key={option.id} value={option.id}>{option.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Locations</label>
+            <select
+              multiple
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-24"
+              value={query.locations}
+              onChange={(e) => setQuery({
+                ...query,
+                locations: Array.from(e.target.selectedOptions, option => option.value)
+              })}
+            >
+              {options.locations?.map(location => (
+                <option key={location.id} value={location.name}>{location.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">User Roles</label>
+            <select
+              multiple
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-24"
+              value={query.user_roles}
+              onChange={(e) => setQuery({
+                ...query,
+                user_roles: Array.from(e.target.selectedOptions, option => option.value)
+              })}
+            >
+              {options.user_roles?.map(role => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Templates</label>
+            <select
+              multiple
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-24"
+              value={query.templates}
+              onChange={(e) => setQuery({
+                ...query,
+                templates: Array.from(e.target.selectedOptions, option => option.value)
+              })}
+            >
+              {options.templates?.map(template => (
+                <option key={template.id} value={template.id}>{template.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <select
+              multiple
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-24"
+              value={query.status}
+              onChange={(e) => setQuery({
+                ...query,
+                status: Array.from(e.target.selectedOptions, option => option.value)
+              })}
+            >
+              {options.status_options?.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <button
+          onClick={generateReport}
+          disabled={loading}
+          className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? 'Generating...' : 'Generate Report'}
+        </button>
+      </div>
+
+      {/* Results */}
+      {statisticsData && (
+        <div className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Total Submissions</h3>
+              <p className="text-2xl font-bold text-blue-600">{statisticsData.summary.total_submissions}</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Approved</h3>
+              <p className="text-2xl font-bold text-green-600">{statisticsData.summary.total_approved}</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Reviewed</h3>
+              <p className="text-2xl font-bold text-blue-600">{statisticsData.summary.total_reviewed}</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Pending</h3>
+              <p className="text-2xl font-bold text-yellow-600">{statisticsData.summary.total_submitted}</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Approval Rate</h3>
+              <p className="text-2xl font-bold text-purple-600">{statisticsData.summary.approval_rate}%</p>
+            </div>
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-4">Submissions Distribution</h3>
+              {getChartData() && <Bar data={getChartData()} options={chartOptions} />}
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-4">Status Overview</h3>
+              {getStatusChartData() && <Pie data={getStatusChartData()} options={pieChartOptions} />}
+            </div>
+          </div>
+
+          {/* Data Table */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Detailed Breakdown</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full table-auto">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        {query.group_by}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Approved</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reviewed</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rejected</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Users</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {statisticsData.data.map((item, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {item.category || 'Unknown'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.total_submissions}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                          {item.approved_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+                          {item.reviewed_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">
+                          {item.submitted_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                          {item.rejected_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.unique_user_count}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Main App Component
 function App() {
   const [user, setUser] = useState(null);
