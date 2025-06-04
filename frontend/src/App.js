@@ -619,7 +619,7 @@ const UserManagement = () => {
   };
 
   const resetForm = () => {
-    setNewUser({ username: '', password: '', role: 'data_entry', assigned_location: '' });
+    setNewUser({ username: '', password: '', role: 'data_entry', assigned_location: '', page_permissions: [] });
     setShowForm(false);
     setEditingUser(null);
   };
