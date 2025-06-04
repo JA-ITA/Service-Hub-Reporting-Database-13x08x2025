@@ -227,15 +227,22 @@ class ClientServicesAPITester:
             return success, response
         return False, {}
 
-    def test_delete_template(self, template_id):
-        """Test deleting a template"""
-        success, _ = self.run_test(
-            "Delete Template",
-            "DELETE",
+    def test_update_template(self, template_id, name, description, fields, locations):
+        """Test updating an existing template"""
+        template_data = {
+            "name": name,
+            "description": description,
+            "fields": fields,
+            "assigned_locations": locations
+        }
+        success, response = self.run_test(
+            "Update Template",
+            "PUT",
             f"templates/{template_id}",
-            200
+            200,
+            data=template_data
         )
-        return success
+        return success, response
 
     def test_file_upload(self, file_path):
         """Test file upload"""
