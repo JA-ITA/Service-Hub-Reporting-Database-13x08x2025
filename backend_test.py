@@ -258,6 +258,16 @@ class ClientServicesAPITester:
             if success and 'filename' in response:
                 return response['filename']
         return None
+        
+    def test_delete_template(self, template_id):
+        """Test deleting a template"""
+        success, _ = self.run_test(
+            "Delete Template",
+            "DELETE",
+            f"templates/{template_id}",
+            200
+        )
+        return success
 
     def test_create_submission(self, template_id, location, month_year, form_data):
         """Test creating a data submission"""
