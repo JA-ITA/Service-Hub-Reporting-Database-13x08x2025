@@ -802,9 +802,11 @@ const RoleManagement = () => {
 };
 
 // User Management Component (Admin only)
+// User Management Component (Admin only)
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [availableRoles, setAvailableRoles] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({
@@ -818,6 +820,7 @@ const UserManagement = () => {
   const availablePermissions = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'users', label: 'Manage Users' },
+    { id: 'roles', label: 'Manage Roles' },
     { id: 'locations', label: 'Manage Locations' },
     { id: 'templates', label: 'Manage Templates' },
     { id: 'reports', label: 'Reports' },
@@ -826,8 +829,15 @@ const UserManagement = () => {
   ];
 
   const getDefaultPermissions = (role) => {
+    // Try to find the role in available roles first
+    const roleData = availableRoles.find(r => r.name === role);
+    if (roleData) {
+      return roleData.permissions || [];
+    }
+
+    // Fallback to hardcoded defaults
     const defaults = {
-      admin: ['dashboard', 'users', 'locations', 'templates', 'reports', 'submit', 'statistics'],
+      admin: ['dashboard', 'users', 'roles', 'locations', 'templates', 'reports', 'submit', 'statistics'],
       manager: ['dashboard', 'submit', 'reports'],
       data_entry: ['dashboard', 'submit'],
       statistician: ['dashboard', 'statistics', 'reports']
@@ -838,6 +848,7 @@ const UserManagement = () => {
   useEffect(() => {
     fetchUsers();
     fetchLocations();
+    fetchAvailableRoles();
   }, []);
 
   const fetchUsers = async () => {
@@ -855,6 +866,22 @@ const UserManagement = () => {
       setLocations(response.data);
     } catch (error) {
       console.error('Error fetching locations:', error);
+    }
+  };
+
+  const fetchAvailableRoles = async () => {
+    try {
+      const response = await axios.get(`${API}/roles`, { headers: getAuthHeader() });
+      setAvailableRoles(response.data || []);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      // Fallback to default roles
+      setAvailableRoles([
+        { name: 'admin', display_name: 'Administrator' },
+        { name: 'manager', display_name: 'Service Hub Manager' },
+        { name: 'data_entry', display_name: 'Data Entry Officer' },
+        { name: 'statistician', display_name: 'Statistician' }
+      ]);
     }
   };
 
