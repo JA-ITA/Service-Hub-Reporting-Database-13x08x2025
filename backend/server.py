@@ -221,11 +221,41 @@ async def get_users(current_user: User = Depends(require_role(["admin"]))):
     users = await db.users.find({"is_active": True}).to_list(1000)
     return [User(**user) for user in users]
 
+@api_router.get("/users/{user_id}")
+async def get_user(user_id: str, current_user: User = Depends(require_role(["admin"]))):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Remove ObjectId and password hash for security
+    if "_id" in user:
+        del user["_id"]
+    if "password_hash" in user:
+        del user["password_hash"]
+    
+    return user
+
 @api_router.put("/users/{user_id}")
 async def update_user(user_id: str, user_data: dict, current_user: User = Depends(require_role(["admin"]))):
+    # Check if user exists
+    existing_user = await db.users.find_one({"id": user_id})
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # If username is being changed, check if it's unique
+    if "username" in user_data and user_data["username"] != existing_user["username"]:
+        existing_username = await db.users.find_one({"username": user_data["username"]})
+        if existing_username:
+            raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Hash password if provided
     if "password" in user_data:
         user_data["password_hash"] = hash_password(user_data["password"])
         del user_data["password"]
+    
+    # Add update metadata
+    user_data["updated_at"] = datetime.utcnow()
+    user_data["updated_by"] = current_user.id
     
     await db.users.update_one({"id": user_id}, {"$set": user_data})
     return {"message": "User updated successfully"}
