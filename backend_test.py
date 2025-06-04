@@ -393,7 +393,7 @@ def main():
         {"name": "number_field", "type": "number", "label": "Number Field", "required": False},
         {"name": "date_field", "type": "date", "label": "Date Field", "required": True},
         {"name": "textarea_field", "type": "textarea", "label": "Text Area Field", "required": False},
-        {"name": "select_field", "type": "select", "label": "Select Field", "required": True},
+        {"name": "select_field", "type": "select", "label": "Select Field", "required": True, "options": ["Option 1", "Option 2", "Option 3"]},
         {"name": "file_field", "type": "file", "label": "File Upload Field", "required": False}
     ]
     
@@ -406,6 +406,57 @@ def main():
     
     # Test getting templates after creation
     tester.test_get_templates()
+    
+    # Test getting a specific template by ID
+    if template_id:
+        success, template = tester.test_get_template_by_id(template_id)
+        if success:
+            print(f"Successfully retrieved template: {template['name']}")
+            
+            # Test updating the template
+            updated_fields = fields.copy()
+            updated_fields.append({
+                "name": "new_dropdown", 
+                "type": "select", 
+                "label": "New Dropdown Field", 
+                "required": False,
+                "options": ["New Option 1", "New Option 2", "New Option 3"]
+            })
+            
+            success, response = tester.test_update_template(
+                template_id,
+                f"{test_template} Updated",
+                "Updated template description",
+                updated_fields,
+                [location_name, "Central Hub"]
+            )
+            
+            if success:
+                print("✅ Template update successful")
+                
+                # Verify the update
+                success, updated_template = tester.test_get_template_by_id(template_id)
+                if success:
+                    print(f"Updated template name: {updated_template['name']}")
+                    print(f"Updated field count: {len(updated_template['fields'])}")
+                    print(f"Updated locations: {', '.join(updated_template['assigned_locations'])}")
+                    
+                    # Verify fields were updated correctly
+                    if len(updated_template['fields']) == len(updated_fields):
+                        print("✅ Field count matches after update")
+                    else:
+                        print(f"❌ Field count mismatch: expected {len(updated_fields)}, got {len(updated_template['fields'])}")
+                        
+                    # Check for the new dropdown field
+                    new_field = next((f for f in updated_template['fields'] if f['name'] == 'new_dropdown'), None)
+                    if new_field:
+                        print("✅ New dropdown field was added successfully")
+                        if 'options' in new_field and len(new_field['options']) == 3:
+                            print("✅ Dropdown options were saved correctly")
+                    else:
+                        print("❌ New dropdown field was not found in the updated template")
+            else:
+                print("❌ Template update failed")
     
     print("\n📝 5. TESTING DATA SUBMISSION")
     # Create a test file for upload
