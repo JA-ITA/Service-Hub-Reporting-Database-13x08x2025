@@ -241,11 +241,15 @@ async def create_user(user_data: UserCreate, current_user: User = Depends(requir
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
     
+    # Set default permissions if not provided
+    permissions = user_data.page_permissions if user_data.page_permissions else get_default_permissions(user_data.role)
+    
     user = User(
         username=user_data.username,
         password_hash=hash_password(user_data.password),
         role=user_data.role,
-        assigned_location=user_data.assigned_location
+        assigned_location=user_data.assigned_location,
+        page_permissions=permissions
     )
     await db.users.insert_one(user.dict())
     return user
