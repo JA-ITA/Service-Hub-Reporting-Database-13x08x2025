@@ -1568,9 +1568,7 @@ const Reports = ({ user }) => {
   }, [filters]);
 
   useEffect(() => {
-    if (submissions.length > 0) {
-      generateSummaryData();
-    }
+    generateSummaryData();
   }, [submissions]);
 
   const fetchSubmissions = async () => {
