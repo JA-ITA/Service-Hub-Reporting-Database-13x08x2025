@@ -958,7 +958,7 @@ async def get_detailed_submissions(
         return submissions
     except Exception as e:
         logger.error(f"Error in detailed submissions: {str(e)}")
-        # Return empty list instead of 404 error
+        # Return empty list instead of error
         return []
 
 @api_router.get("/")
