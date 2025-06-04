@@ -523,6 +523,171 @@ async def export_csv(
         headers={"Content-Disposition": "attachment; filename=report.csv"}
     )
 
+# Admin Settings Routes
+@api_router.post("/admin/settings")
+async def create_or_update_setting(setting_data: AdminSettingCreate, current_user: User = Depends(require_role(["admin"]))):
+    # Check if setting already exists
+    existing_setting = await db.admin_settings.find_one({"setting_key": setting_data.setting_key})
+    
+    if existing_setting:
+        # Update existing setting
+        update_data = {
+            "setting_value": setting_data.setting_value,
+            "description": setting_data.description,
+            "updated_by": current_user.id,
+            "updated_at": datetime.utcnow()
+        }
+        await db.admin_settings.update_one({"setting_key": setting_data.setting_key}, {"$set": update_data})
+        return {"message": "Setting updated successfully"}
+    else:
+        # Create new setting
+        setting = AdminSetting(**setting_data.dict(), updated_by=current_user.id)
+        await db.admin_settings.insert_one(setting.dict())
+        return {"message": "Setting created successfully"}
+
+@api_router.get("/admin/settings/{setting_key}")
+async def get_setting(setting_key: str, current_user: User = Depends(get_current_user)):
+    setting = await db.admin_settings.find_one({"setting_key": setting_key})
+    if not setting:
+        return {"setting_key": setting_key, "setting_value": None}
+    
+    # Remove ObjectId for JSON serialization
+    if "_id" in setting:
+        del setting["_id"]
+    
+    return setting
+
+@api_router.get("/admin/settings")
+async def get_all_settings(current_user: User = Depends(require_role(["admin"]))):
+    settings = await db.admin_settings.find().to_list(1000)
+    
+    # Remove ObjectIds for JSON serialization
+    for setting in settings:
+        if "_id" in setting:
+            del setting["_id"]
+    
+    return settings
+
+# Dashboard Analytics Routes
+@api_router.get("/dashboard/submissions-by-location")
+async def get_submissions_by_location(
+    month_year: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get submission statistics by location"""
+    pipeline = []
+    
+    # Add month/year filter if provided
+    match_conditions = {}
+    if month_year:
+        match_conditions["month_year"] = month_year
+    
+    # Role-based filtering
+    if current_user.role in ["manager", "data_entry"]:
+        match_conditions["service_location"] = current_user.assigned_location
+    
+    if match_conditions:
+        pipeline.append({"$match": match_conditions})
+    
+    # Group by location and count submissions
+    pipeline.extend([
+        {
+            "$group": {
+                "_id": "$service_location",
+                "submission_count": {"$sum": 1},
+                "statuses": {
+                    "$push": "$status"
+                },
+                "latest_submission": {"$max": "$submitted_at"}
+            }
+        },
+        {
+            "$project": {
+                "location": "$_id",
+                "submission_count": 1,
+                "approved_count": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$statuses",
+                            "cond": {"$eq": ["$$this", "approved"]}
+                        }
+                    }
+                },
+                "submitted_count": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$statuses",
+                            "cond": {"$eq": ["$$this", "submitted"]}
+                        }
+                    }
+                },
+                "reviewed_count": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$statuses",
+                            "cond": {"$eq": ["$$this", "reviewed"]}
+                        }
+                    }
+                },
+                "rejected_count": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$statuses",
+                            "cond": {"$eq": ["$$this", "rejected"]}
+                        }
+                    }
+                },
+                "latest_submission": 1,
+                "_id": 0
+            }
+        },
+        {"$sort": {"submission_count": -1}}
+    ])
+    
+    results = await db.data_submissions.aggregate(pipeline).to_list(1000)
+    return results
+
+@api_router.get("/dashboard/missing-reports")
+async def get_missing_reports(current_user: User = Depends(get_current_user)):
+    """Get locations that haven't submitted reports by the deadline"""
+    
+    # Get deadline setting
+    deadline_setting = await db.admin_settings.find_one({"setting_key": "report_deadline"})
+    if not deadline_setting:
+        return {
+            "deadline": None,
+            "missing_locations": [],
+            "message": "No deadline set by administrator"
+        }
+    
+    deadline_date = deadline_setting["setting_value"]
+    
+    # Get all active locations
+    all_locations = await db.service_locations.find({"is_active": True}).to_list(1000)
+    
+    # Get locations that have submitted reports after the deadline
+    submitted_locations = await db.data_submissions.find({
+        "submitted_at": {"$gte": datetime.fromisoformat(deadline_date.replace("Z", "+00:00"))}
+    }).distinct("service_location")
+    
+    # Find missing locations
+    missing_locations = []
+    for location in all_locations:
+        if location["name"] not in submitted_locations:
+            # Role-based filtering - only show if user has access
+            if current_user.role == "admin" or current_user.assigned_location == location["name"]:
+                missing_locations.append({
+                    "id": location["id"],
+                    "name": location["name"],
+                    "description": location.get("description", "")
+                })
+    
+    return {
+        "deadline": deadline_date,
+        "missing_locations": missing_locations,
+        "total_missing": len(missing_locations)
+    }
+
 @api_router.get("/")
 async def root():
     return {"message": "CLIENT SERVICES Platform API"}
