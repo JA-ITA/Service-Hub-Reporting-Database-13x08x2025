@@ -1538,21 +1538,33 @@ const Reports = ({ user }) => {
   const [submissions, setSubmissions] = useState([]);
   const [locations, setLocations] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [users, setUsers] = useState([]);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [editingSubmission, setEditingSubmission] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [summaryData, setSummaryData] = useState({});
+  const [activeView, setActiveView] = useState('summary'); // 'summary' or 'detailed'
   const [filters, setFilters] = useState({
     location: '',
     month_year: '',
-    template_id: ''
+    template_id: '',
+    submitted_by: '',
+    status: ''
   });
 
   useEffect(() => {
     fetchSubmissions();
     fetchLocations();
     fetchTemplates();
+    fetchUsers();
   }, [filters]);
+
+  useEffect(() => {
+    if (submissions.length > 0) {
+      generateSummaryData();
+    }
+  }, [submissions]);
 
   const fetchSubmissions = async () => {
     try {
@@ -1562,16 +1574,29 @@ const Reports = ({ user }) => {
       });
 
       const response = await axios.get(`${API}/submissions/detailed?${params}`, { headers: getAuthHeader() });
-      setSubmissions(response.data);
+      setSubmissions(response.data || []);
     } catch (error) {
       console.error('Error fetching submissions:', error);
+      // Fallback to regular submissions if detailed endpoint fails
+      try {
+        const response = await axios.get(`${API}/submissions?${params}`, { headers: getAuthHeader() });
+        const regularSubmissions = response.data || [];
+        // Add username lookup for fallback
+        for (let submission of regularSubmissions) {
+          submission.submitted_by_username = 'Loading...';
+        }
+        setSubmissions(regularSubmissions);
+      } catch (fallbackError) {
+        console.error('Error fetching regular submissions:', fallbackError);
+        setSubmissions([]);
+      }
     }
   };
 
   const fetchLocations = async () => {
     try {
       const response = await axios.get(`${API}/locations`, { headers: getAuthHeader() });
-      setLocations(response.data);
+      setLocations(response.data || []);
     } catch (error) {
       console.error('Error fetching locations:', error);
     }
@@ -1580,10 +1605,57 @@ const Reports = ({ user }) => {
   const fetchTemplates = async () => {
     try {
       const response = await axios.get(`${API}/templates`, { headers: getAuthHeader() });
-      setTemplates(response.data);
+      setTemplates(response.data || []);
     } catch (error) {
       console.error('Error fetching templates:', error);
     }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      if (user.role === 'admin') {
+        const response = await axios.get(`${API}/users`, { headers: getAuthHeader() });
+        setUsers(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const generateSummaryData = () => {
+    const summary = {
+      byTemplate: {},
+      byLocation: {},
+      byMonth: {},
+      byUser: {},
+      byStatus: {},
+      byDate: {}
+    };
+
+    submissions.forEach(submission => {
+      // By Template
+      const templateName = getTemplateById(submission.template_id)?.name || 'Unknown Template';
+      summary.byTemplate[templateName] = (summary.byTemplate[templateName] || 0) + 1;
+
+      // By Location
+      summary.byLocation[submission.service_location] = (summary.byLocation[submission.service_location] || 0) + 1;
+
+      // By Month/Year
+      summary.byMonth[submission.month_year] = (summary.byMonth[submission.month_year] || 0) + 1;
+
+      // By User
+      const username = submission.submitted_by_username || 'Unknown User';
+      summary.byUser[username] = (summary.byUser[username] || 0) + 1;
+
+      // By Status
+      summary.byStatus[submission.status] = (summary.byStatus[submission.status] || 0) + 1;
+
+      // By Date (submitted date)
+      const submitDate = new Date(submission.submitted_at).toLocaleDateString();
+      summary.byDate[submitDate] = (summary.byDate[submitDate] || 0) + 1;
+    });
+
+    setSummaryData(summary);
   };
 
   const fetchSubmissionDetail = async (submissionId) => {
@@ -1657,6 +1729,50 @@ const Reports = ({ user }) => {
     return templates.find(t => t.id === templateId);
   };
 
+  const getUserById = (userId) => {
+    return users.find(u => u.id === userId);
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return 'text-green-600';
+      case 'reviewed': return 'text-blue-600';
+      case 'rejected': return 'text-red-600';
+      default: return 'text-yellow-600';
+    }
+  };
+
+  const getStatusBgColor = (status) => {
+    switch (status) {
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'reviewed': return 'bg-blue-100 text-blue-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      default: return 'bg-yellow-100 text-yellow-800';
+    }
+  };
+
+  const renderSummaryCard = (title, data, colorClass = 'text-blue-600') => (
+    <div className="bg-white p-6 rounded-lg shadow">
+      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+      <div className="space-y-2 max-h-48 overflow-y-auto">
+        {Object.entries(data)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 10)
+          .map(([key, value]) => (
+            <div key={key} className="flex justify-between items-center">
+              <span className="text-sm text-gray-700 truncate pr-2" title={key}>
+                {key.length > 20 ? key.substring(0, 20) + '...' : key}
+              </span>
+              <span className={`font-semibold ${colorClass}`}>{value}</span>
+            </div>
+          ))}
+        {Object.keys(data).length === 0 && (
+          <p className="text-gray-500 text-sm">No data available</p>
+        )}
+      </div>
+    </div>
+  );
+
   const renderEditFormField = (field, value) => {
     const commonProps = {
       className: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm",
@@ -1702,23 +1818,47 @@ const Reports = ({ user }) => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Reports</h2>
-        <button
-          onClick={exportCSV}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-        >
-          Export CSV
-        </button>
+        <div className="flex space-x-4">
+          <div className="flex bg-gray-200 rounded-lg p-1">
+            <button
+              onClick={() => setActiveView('summary')}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                activeView === 'summary' 
+                  ? 'bg-white text-blue-600 shadow' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Summary View
+            </button>
+            <button
+              onClick={() => setActiveView('detailed')}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                activeView === 'detailed' 
+                  ? 'bg-white text-blue-600 shadow' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Detailed View
+            </button>
+          </div>
+          <button
+            onClick={exportCSV}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white p-6 rounded-lg shadow mb-6">
         <h3 className="text-lg font-semibold mb-4">Filters</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {user.role === 'admin' && (
             <div>
               <label className="block text-sm font-medium text-gray-700">Location</label>
               <select
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                 value={filters.location}
                 onChange={(e) => setFilters({...filters, location: e.target.value})}
               >
@@ -1734,7 +1874,7 @@ const Reports = ({ user }) => {
             <label className="block text-sm font-medium text-gray-700">Month/Year</label>
             <input
               type="month"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               value={filters.month_year}
               onChange={(e) => setFilters({...filters, month_year: e.target.value})}
             />
@@ -1743,7 +1883,7 @@ const Reports = ({ user }) => {
           <div>
             <label className="block text-sm font-medium text-gray-700">Template</label>
             <select
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               value={filters.template_id}
               onChange={(e) => setFilters({...filters, template_id: e.target.value})}
             >
@@ -1753,8 +1893,80 @@ const Reports = ({ user }) => {
               ))}
             </select>
           </div>
+
+          {user.role === 'admin' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Submitted By</label>
+              <select
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                value={filters.submitted_by}
+                onChange={(e) => setFilters({...filters, submitted_by: e.target.value})}
+              >
+                <option value="">All Users</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.username}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <select
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              value={filters.status}
+              onChange={(e) => setFilters({...filters, status: e.target.value})}
+            >
+              <option value="">All Status</option>
+              <option value="submitted">Submitted</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
         </div>
       </div>
+
+      {/* Summary View */}
+      {activeView === 'summary' && (
+        <div>
+          {/* Overall Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Total Reports</h3>
+              <p className="text-2xl font-bold text-blue-600">{submissions.length}</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Approved</h3>
+              <p className="text-2xl font-bold text-green-600">
+                {submissions.filter(s => s.status === 'approved').length}
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Pending Review</h3>
+              <p className="text-2xl font-bold text-yellow-600">
+                {submissions.filter(s => s.status === 'submitted').length}
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <h3 className="text-sm font-medium text-gray-700">Rejected</h3>
+              <p className="text-2xl font-bold text-red-600">
+                {submissions.filter(s => s.status === 'rejected').length}
+              </p>
+            </div>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {renderSummaryCard('By Template', summaryData.byTemplate, 'text-purple-600')}
+            {renderSummaryCard('By Location', summaryData.byLocation, 'text-blue-600')}
+            {renderSummaryCard('By Month/Year', summaryData.byMonth, 'text-green-600')}
+            {renderSummaryCard('By User', summaryData.byUser, 'text-orange-600')}
+            {renderSummaryCard('By Status', summaryData.byStatus, 'text-red-600')}
+            {renderSummaryCard('By Submission Date', summaryData.byDate, 'text-indigo-600')}
+          </div>
+        </div>
+      )}
 
       {/* Edit Submission Modal */}
       {editingSubmission && (
@@ -1848,12 +2060,7 @@ const Reports = ({ user }) => {
                   </div>
                   <div>
                     <strong>Status:</strong> 
-                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                      selectedSubmission.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      selectedSubmission.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
-                      selectedSubmission.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${getStatusBgColor(selectedSubmission.status)}`}>
                       {selectedSubmission.status}
                     </span>
                   </div>
@@ -1908,78 +2115,75 @@ const Reports = ({ user }) => {
         </div>
       )}
 
-      {/* Results */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Submissions ({submissions.length})</h3>
-          {submissions.length === 0 ? (
-            <p className="text-gray-500">No submissions found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Template</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month/Year</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted By</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {submissions.map(submission => (
-                    <tr key={submission.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {templates.find(t => t.id === submission.template_id)?.name || submission.template_id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {submission.service_location}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {submission.month_year}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {submission.submitted_by_username}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(submission.submitted_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          submission.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          submission.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
-                          submission.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {submission.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => fetchSubmissionDetail(submission.id)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          View
-                        </button>
-                        {user.role !== 'data_entry' && (
-                          <button
-                            onClick={() => startEditSubmission(submission.id)}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            Edit
-                          </button>
-                        )}
-                      </td>
+      {/* Detailed View */}
+      {activeView === 'detailed' && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-4">All Submissions ({submissions.length})</h3>
+            {submissions.length === 0 ? (
+              <p className="text-gray-500">No submissions found.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full table-auto">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Template</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month/Year</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted By</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {submissions.map(submission => (
+                      <tr key={submission.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {templates.find(t => t.id === submission.template_id)?.name || 'Unknown Template'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {submission.service_location}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {submission.month_year}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {submission.submitted_by_username || 'Unknown User'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(submission.submitted_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className={`px-2 py-1 rounded-full text-xs ${getStatusBgColor(submission.status)}`}>
+                            {submission.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => fetchSubmissionDetail(submission.id)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            View
+                          </button>
+                          {user.role !== 'data_entry' && (
+                            <button
+                              onClick={() => startEditSubmission(submission.id)}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
