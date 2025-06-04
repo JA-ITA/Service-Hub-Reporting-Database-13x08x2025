@@ -123,6 +123,23 @@ class AdminSettingCreate(BaseModel):
     setting_value: str
     description: Optional[str] = None
 
+class UserRole(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    display_name: str
+    description: Optional[str] = None
+    permissions: List[str] = []  # List of allowed pages/actions
+    is_system_role: bool = False  # Cannot be deleted if True
+    created_by: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_active: bool = True
+
+class UserRoleCreate(BaseModel):
+    name: str
+    display_name: str
+    description: Optional[str] = None
+    permissions: List[str] = []
+
 class StatisticsQuery(BaseModel):
     date_from: Optional[str] = None
     date_to: Optional[str] = None
