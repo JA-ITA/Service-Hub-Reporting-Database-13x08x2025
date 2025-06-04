@@ -304,18 +304,22 @@ const Dashboard = ({ user }) => {
                     <span className="text-lg font-bold text-blue-600">{locationData.submission_count}</span>
                   </div>
                   
-                  <div className="grid grid-cols-4 gap-2 mt-2 text-sm">
-                    <div className="text-green-600">
-                      ✓ {locationData.approved_count} approved
+                  <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                    <div className="flex items-center text-green-600">
+                      <span className="w-2 h-2 bg-green-600 rounded-full mr-2"></span>
+                      {locationData.approved_count} Approved
                     </div>
-                    <div className="text-blue-600">
-                      ◉ {locationData.reviewed_count} reviewed
+                    <div className="flex items-center text-blue-600">
+                      <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
+                      {locationData.reviewed_count} Reviewed
                     </div>
-                    <div className="text-yellow-600">
-                      ● {locationData.submitted_count} submitted
+                    <div className="flex items-center text-yellow-600">
+                      <span className="w-2 h-2 bg-yellow-600 rounded-full mr-2"></span>
+                      {locationData.submitted_count} Submitted
                     </div>
-                    <div className="text-red-600">
-                      ✗ {locationData.rejected_count} rejected
+                    <div className="flex items-center text-red-600">
+                      <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
+                      {locationData.rejected_count} Rejected
                     </div>
                   </div>
                   
