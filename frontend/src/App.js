@@ -577,7 +577,8 @@ const UserManagement = () => {
         username: user.username,
         password: '', // Don't prefill password for security
         role: user.role,
-        assigned_location: user.assigned_location || ''
+        assigned_location: user.assigned_location || '',
+        page_permissions: user.page_permissions || getDefaultPermissions(user.role)
       });
       setEditingUser(user);
       setShowForm(true);
