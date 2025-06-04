@@ -1501,7 +1501,7 @@ const Reports = ({ user }) => {
         if (value) params.append(key, value);
       });
 
-      const response = await axios.get(`${API}/submissions?${params}`, { headers: getAuthHeader() });
+      const response = await axios.get(`${API}/submissions/detailed?${params}`, { headers: getAuthHeader() });
       setSubmissions(response.data);
     } catch (error) {
       console.error('Error fetching submissions:', error);
