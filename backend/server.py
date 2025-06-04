@@ -395,6 +395,11 @@ async def export_csv(
     
     submissions = await db.data_submissions.find(query).to_list(1000)
     
+    # Remove ObjectIds for CSV processing
+    for submission in submissions:
+        if "_id" in submission:
+            del submission["_id"]
+    
     # Create CSV
     output = io.StringIO()
     writer = csv.writer(output)
