@@ -123,6 +123,25 @@ class AdminSettingCreate(BaseModel):
     setting_value: str
     description: Optional[str] = None
 
+class StatisticsQuery(BaseModel):
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+    locations: Optional[List[str]] = []
+    user_roles: Optional[List[str]] = []
+    templates: Optional[List[str]] = []
+    status: Optional[List[str]] = []
+    group_by: Optional[str] = "location"  # location, month, template, status, user_role
+
+# Helper function to get default page permissions based on role
+def get_default_permissions(role: str) -> List[str]:
+    permissions_map = {
+        "admin": ["dashboard", "users", "locations", "templates", "reports", "submit", "statistics"],
+        "manager": ["dashboard", "submit", "reports"],
+        "data_entry": ["dashboard", "submit"],
+        "statistician": ["dashboard", "statistics", "reports"]
+    }
+    return permissions_map.get(role, [])
+
 # Helper functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
