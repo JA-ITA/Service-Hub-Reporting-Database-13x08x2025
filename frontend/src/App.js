@@ -137,39 +137,135 @@ const Navigation = ({ user, activeTab, setActiveTab, onLogout }) => {
 // Dashboard Component
 const Dashboard = ({ user }) => {
   const [stats, setStats] = useState({ submissions: 0, templates: 0, users: 0 });
+  const [submissionsByLocation, setSubmissionsByLocation] = useState([]);
+  const [missingReports, setMissingReports] = useState({ deadline: null, missing_locations: [], total_missing: 0 });
+  const [deadline, setDeadline] = useState('');
+  const [showDeadlineEdit, setShowDeadlineEdit] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('');
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const headers = getAuthHeader();
-        const [submissionsRes, templatesRes] = await Promise.all([
-          axios.get(`${API}/submissions`, { headers }),
-          axios.get(`${API}/templates`, { headers })
-        ]);
-        
-        let usersCount = 0;
-        if (user.role === 'admin') {
-          const usersRes = await axios.get(`${API}/users`, { headers });
-          usersCount = usersRes.data.length;
-        }
-        
-        setStats({
-          submissions: submissionsRes.data.length,
-          templates: templatesRes.data.length,
-          users: usersCount
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      }
-    };
-    
     fetchStats();
-  }, [user.role]);
+    fetchSubmissionsByLocation();
+    fetchMissingReports();
+    fetchDeadline();
+  }, [user.role, selectedMonth]);
+
+  const fetchStats = async () => {
+    try {
+      const headers = getAuthHeader();
+      const [submissionsRes, templatesRes] = await Promise.all([
+        axios.get(`${API}/submissions`, { headers }),
+        axios.get(`${API}/templates`, { headers })
+      ]);
+      
+      let usersCount = 0;
+      if (user.role === 'admin') {
+        const usersRes = await axios.get(`${API}/users`, { headers });
+        usersCount = usersRes.data.length;
+      }
+      
+      setStats({
+        submissions: submissionsRes.data.length,
+        templates: templatesRes.data.length,
+        users: usersCount
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchSubmissionsByLocation = async () => {
+    try {
+      const headers = getAuthHeader();
+      const params = selectedMonth ? `?month_year=${selectedMonth}` : '';
+      const response = await axios.get(`${API}/dashboard/submissions-by-location${params}`, { headers });
+      setSubmissionsByLocation(response.data);
+    } catch (error) {
+      console.error('Error fetching submissions by location:', error);
+    }
+  };
+
+  const fetchMissingReports = async () => {
+    try {
+      const headers = getAuthHeader();
+      const response = await axios.get(`${API}/dashboard/missing-reports`, { headers });
+      setMissingReports(response.data);
+    } catch (error) {
+      console.error('Error fetching missing reports:', error);
+    }
+  };
+
+  const fetchDeadline = async () => {
+    try {
+      const headers = getAuthHeader();
+      const response = await axios.get(`${API}/admin/settings/report_deadline`, { headers });
+      if (response.data.setting_value) {
+        setDeadline(response.data.setting_value.split('T')[0]); // Extract date part
+      }
+    } catch (error) {
+      console.error('Error fetching deadline:', error);
+    }
+  };
+
+  const updateDeadline = async () => {
+    if (!deadline) {
+      alert('Please select a deadline date');
+      return;
+    }
+
+    try {
+      const headers = getAuthHeader();
+      const deadlineISO = new Date(deadline).toISOString();
+      
+      await axios.post(`${API}/admin/settings`, {
+        setting_key: 'report_deadline',
+        setting_value: deadlineISO,
+        description: 'Deadline for monthly report submissions'
+      }, { headers });
+
+      alert('Deadline updated successfully!');
+      setShowDeadlineEdit(false);
+      fetchMissingReports();
+    } catch (error) {
+      alert('Error updating deadline: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return 'text-green-600';
+      case 'reviewed': return 'text-blue-600';
+      case 'rejected': return 'text-red-600';
+      default: return 'text-yellow-600';
+    }
+  };
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        {user.role === 'admin' && (
+          <div className="flex items-center space-x-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Filter by Month:</label>
+              <input
+                type="month"
+                className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={() => setShowDeadlineEdit(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            >
+              Set Report Deadline
+            </button>
+          </div>
+        )}
+      </div>
       
+      {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700">Total Submissions</h3>
@@ -188,6 +284,157 @@ const Dashboard = ({ user }) => {
           </div>
         )}
       </div>
+
+      {/* Submissions by Location */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-4">
+            Submissions by Location
+            {selectedMonth && <span className="text-sm text-gray-500 ml-2">({selectedMonth})</span>}
+          </h3>
+          
+          {submissionsByLocation.length === 0 ? (
+            <p className="text-gray-500">No submissions found for the selected period.</p>
+          ) : (
+            <div className="space-y-4">
+              {submissionsByLocation.map((locationData, index) => (
+                <div key={index} className="border-l-4 border-blue-500 pl-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-semibold">{locationData.location}</h4>
+                    <span className="text-lg font-bold text-blue-600">{locationData.submission_count}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-4 gap-2 mt-2 text-sm">
+                    <div className="text-green-600">
+                      ✓ {locationData.approved_count} approved
+                    </div>
+                    <div className="text-blue-600">
+                      ◉ {locationData.reviewed_count} reviewed
+                    </div>
+                    <div className="text-yellow-600">
+                      ● {locationData.submitted_count} submitted
+                    </div>
+                    <div className="text-red-600">
+                      ✗ {locationData.rejected_count} rejected
+                    </div>
+                  </div>
+                  
+                  {locationData.latest_submission && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Latest: {new Date(locationData.latest_submission).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Missing Reports */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Missing Reports</h3>
+            {missingReports.deadline && (
+              <span className="text-sm text-gray-500">
+                Deadline: {new Date(missingReports.deadline).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+          
+          {!missingReports.deadline ? (
+            <div className="text-center py-4">
+              <p className="text-gray-500 mb-3">No deadline set</p>
+              {user.role === 'admin' && (
+                <button
+                  onClick={() => setShowDeadlineEdit(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                >
+                  Set Deadline
+                </button>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-red-700">
+                    {missingReports.total_missing} locations missing reports
+                  </span>
+                  {user.role === 'admin' && (
+                    <button
+                      onClick={() => setShowDeadlineEdit(true)}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Edit Deadline
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              {missingReports.missing_locations.length === 0 ? (
+                <p className="text-green-600 text-center py-4">
+                  ✓ All locations have submitted their reports!
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {missingReports.missing_locations.map((location) => (
+                    <div key={location.id} className="flex items-center justify-between p-2 bg-red-50 rounded">
+                      <div>
+                        <span className="font-medium text-red-800">{location.name}</span>
+                        {location.description && (
+                          <p className="text-xs text-red-600">{location.description}</p>
+                        )}
+                      </div>
+                      <span className="text-red-600">⚠️</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Deadline Edit Modal */}
+      {showDeadlineEdit && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-semibold mb-4">Set Report Deadline</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Deadline Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Locations that haven't submitted reports after this date will be highlighted
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setShowDeadlineEdit(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={updateDeadline}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Set Deadline
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="bg-white p-6 rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4">Welcome, {user.username}!</h3>
@@ -203,12 +450,14 @@ const Dashboard = ({ user }) => {
                 <li>Manage users, locations, and data collection templates</li>
                 <li>View and export reports from all locations</li>
                 <li>Submit data for any location</li>
+                <li>Set report deadlines and monitor compliance</li>
               </>
             )}
             {user.role === 'manager' && (
               <>
                 <li>Submit and review data for your assigned location</li>
                 <li>Generate and export reports for your location</li>
+                <li>Monitor submission deadlines</li>
               </>
             )}
             {user.role === 'data_entry' && (
