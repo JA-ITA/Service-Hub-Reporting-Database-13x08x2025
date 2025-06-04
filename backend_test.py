@@ -214,6 +214,18 @@ class ClientServicesAPITester:
         if success:
             return success, response
         return False, []
+        
+    def test_get_template_by_id(self, template_id):
+        """Test getting a specific template by ID"""
+        success, response = self.run_test(
+            "Get Template by ID",
+            "GET",
+            f"templates/{template_id}",
+            200
+        )
+        if success:
+            return success, response
+        return False, {}
 
     def test_delete_template(self, template_id):
         """Test deleting a template"""
