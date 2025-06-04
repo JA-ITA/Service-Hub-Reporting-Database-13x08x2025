@@ -1015,10 +1015,9 @@ const UserManagement = () => {
                 value={newUser.role}
                 onChange={(e) => handleRoleChange(e.target.value)}
               >
-                <option value="data_entry">Data Entry Officer</option>
-                <option value="manager">Service Hub Manager</option>
-                <option value="statistician">Statistician</option>
-                <option value="admin">Administrator</option>
+                {availableRoles.map(role => (
+                  <option key={role.name} value={role.name}>{role.display_name}</option>
+                ))}
               </select>
             </div>
             
