@@ -348,6 +348,22 @@ async def get_submissions(
     
     return submissions
 
+@api_router.get("/submissions/{submission_id}")
+async def get_submission(submission_id: str, current_user: User = Depends(get_current_user)):
+    submission = await db.data_submissions.find_one({"id": submission_id})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    # Check if user can view this submission
+    if current_user.role in ["manager", "data_entry"] and submission["service_location"] != current_user.assigned_location:
+        raise HTTPException(status_code=403, detail="Cannot view this submission")
+    
+    # Remove ObjectId for JSON serialization
+    if "_id" in submission:
+        del submission["_id"]
+    
+    return submission
+
 @api_router.put("/submissions/{submission_id}")
 async def update_submission(submission_id: str, submission_data: dict, current_user: User = Depends(get_current_user)):
     # Check if user can edit this submission
@@ -355,8 +371,17 @@ async def update_submission(submission_id: str, submission_data: dict, current_u
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     
-    if current_user.role in ["manager", "data_entry"] and submission["service_location"] != current_user.assigned_location:
-        raise HTTPException(status_code=403, detail="Cannot edit this submission")
+    # Only managers and admins can edit submissions
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to edit submissions")
+    
+    # Managers can only edit submissions from their location
+    if current_user.role == "manager" and submission["service_location"] != current_user.assigned_location:
+        raise HTTPException(status_code=403, detail="Cannot edit submissions from other locations")
+    
+    # Add update metadata
+    submission_data["updated_at"] = datetime.utcnow()
+    submission_data["updated_by"] = current_user.id
     
     await db.data_submissions.update_one({"id": submission_id}, {"$set": submission_data})
     return {"message": "Submission updated successfully"}
