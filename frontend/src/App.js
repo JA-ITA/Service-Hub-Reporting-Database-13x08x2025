@@ -2898,6 +2898,8 @@ function App() {
         return <Dashboard user={user} />;
       case 'users':
         return <UserManagement />;
+      case 'roles':
+        return <RoleManagement />;
       case 'locations':
         return <LocationManagement />;
       case 'templates':
