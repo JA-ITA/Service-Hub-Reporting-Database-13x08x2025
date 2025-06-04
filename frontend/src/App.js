@@ -522,8 +522,29 @@ const UserManagement = () => {
     username: '',
     password: '',
     role: 'data_entry',
-    assigned_location: ''
+    assigned_location: '',
+    page_permissions: []
   });
+
+  const availablePermissions = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'users', label: 'Manage Users' },
+    { id: 'locations', label: 'Manage Locations' },
+    { id: 'templates', label: 'Manage Templates' },
+    { id: 'reports', label: 'Reports' },
+    { id: 'submit', label: 'Submit Data' },
+    { id: 'statistics', label: 'Statistics' }
+  ];
+
+  const getDefaultPermissions = (role) => {
+    const defaults = {
+      admin: ['dashboard', 'users', 'locations', 'templates', 'reports', 'submit', 'statistics'],
+      manager: ['dashboard', 'submit', 'reports'],
+      data_entry: ['dashboard', 'submit'],
+      statistician: ['dashboard', 'statistics', 'reports']
+    };
+    return defaults[role] || [];
+  };
 
   useEffect(() => {
     fetchUsers();
