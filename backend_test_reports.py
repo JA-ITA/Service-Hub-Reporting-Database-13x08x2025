@@ -62,8 +62,8 @@ class ReportsAPITester:
             200,
             data={"username": username, "password": password}
         )
-        if success and 'token' in response:
-            self.token = response['token']
+        if success and 'access_token' in response:
+            self.token = response['access_token']
             return True, response
         return False, {}
 
