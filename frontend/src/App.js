@@ -1253,6 +1253,12 @@ const UserManagement = () => {
                       Edit
                     </button>
                     <button
+                      onClick={() => handlePasswordReset(user.id, user.username)}
+                      className="text-orange-600 hover:text-orange-900"
+                    >
+                      Reset Password
+                    </button>
+                    <button
                       onClick={() => handleDeleteUser(user.id)}
                       className="text-red-600 hover:text-red-900"
                       disabled={user.username === 'admin'}
