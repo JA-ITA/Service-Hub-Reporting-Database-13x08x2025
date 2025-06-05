@@ -644,10 +644,6 @@ async def update_role(role_id: str, role_data: UserRoleCreate, current_user: Use
     if not existing_role:
         raise HTTPException(status_code=404, detail="Role not found")
     
-    # Check if it's a system role
-    if existing_role.get("is_system_role", False):
-        raise HTTPException(status_code=403, detail="Cannot modify system roles")
-    
     # Check if new name conflicts with existing role (excluding current role)
     if role_data.name != existing_role["name"]:
         name_conflict = await db.user_roles.find_one({"name": role_data.name, "id": {"$ne": role_id}})
