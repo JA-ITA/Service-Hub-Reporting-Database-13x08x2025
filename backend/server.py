@@ -50,7 +50,9 @@ class User(BaseModel):
     username: str
     password_hash: str
     role: str  # 'admin', 'manager', 'data_entry', 'statistician'
-    assigned_location: Optional[str] = None
+    assigned_location: Optional[str] = None  # Keep for backward compatibility
+    assigned_locations: List[str] = []  # New field for multiple locations
+    has_all_locations: bool = False  # True if user has access to all locations
     page_permissions: List[str] = []  # List of allowed pages
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_active: bool = True
@@ -59,7 +61,9 @@ class UserCreate(BaseModel):
     username: str
     password: str
     role: str
-    assigned_location: Optional[str] = None
+    assigned_location: Optional[str] = None  # Keep for backward compatibility
+    assigned_locations: List[str] = []  # New field for multiple locations
+    has_all_locations: bool = False
     page_permissions: List[str] = []
 
 class UserLogin(BaseModel):
