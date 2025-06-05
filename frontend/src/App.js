@@ -816,12 +816,17 @@ const RoleManagement = () => {
 
 // User Management Component (Admin only)
 // User Management Component (Admin only)
+// User Management Component (Admin only)
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [availableRoles, setAvailableRoles] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [resettingUser, setResettingUser] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [newUser, setNewUser] = useState({
     username: '',
     password: '',
