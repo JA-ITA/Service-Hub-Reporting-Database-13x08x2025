@@ -659,13 +659,21 @@ const RoleManagement = () => {
                 <label className="block text-sm font-medium text-gray-700">Role Name (ID)</label>
                 <input
                   type="text"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ${
+                    editingRole?.is_system_role ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
                   placeholder="role_name"
+                  disabled={editingRole?.is_system_role}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Lowercase letters, numbers, and underscores only</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {editingRole?.is_system_role 
+                    ? 'System role names cannot be changed to maintain system integrity'
+                    : 'Lowercase letters, numbers, and underscores only'
+                  }
+                </p>
               </div>
               
               <div>
