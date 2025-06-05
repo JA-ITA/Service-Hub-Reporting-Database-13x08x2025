@@ -601,6 +601,40 @@ async def update_submission(submission_id: str, submission_data: dict, current_u
     await db.data_submissions.update_one({"id": submission_id}, {"$set": submission_data})
     return {"message": "Submission updated successfully"}
 
+@api_router.delete("/submissions/{submission_id}")
+async def delete_submission(submission_id: str, current_user: User = Depends(require_role(["admin"]))):
+    """Delete a submission (Admin only)"""
+    # Check if submission exists
+    submission = await db.data_submissions.find_one({"id": submission_id})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    # Store submission info for response
+    submission_info = {
+        "id": submission["id"],
+        "template_id": submission["template_id"],
+        "service_location": submission["service_location"],
+        "month_year": submission["month_year"],
+        "submitted_by": submission["submitted_by"],
+        "submitted_at": submission["submitted_at"]
+    }
+    
+    # Delete the submission
+    result = await db.data_submissions.delete_one({"id": submission_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    # Log the deletion
+    logger.info(f"Submission {submission_id} deleted by admin {current_user.username}")
+    
+    return {
+        "message": "Submission deleted successfully",
+        "deleted_submission": submission_info,
+        "deleted_by": current_user.username,
+        "deleted_at": datetime.utcnow().isoformat()
+    }
+
 # File Upload Routes
 @api_router.post("/upload")
 async def upload_file(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
