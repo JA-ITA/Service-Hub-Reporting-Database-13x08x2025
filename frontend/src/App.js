@@ -2235,8 +2235,27 @@ const Reports = ({ user }) => {
       const response = await axios.get(`${API}/submissions/${submissionId}`, { headers: getAuthHeader() });
       setEditingSubmission(response.data);
       setEditFormData(response.data.form_data || {});
+      setActiveEditTab('edit'); // Reset to edit tab
     } catch (error) {
       alert('Error fetching submission for editing: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const deleteSubmission = async () => {
+    if (!editingSubmission) return;
+    
+    const confirmText = `Are you sure you want to delete this submission?\n\nDetails:\n- Template: ${getTemplateById(editingSubmission.template_id)?.name}\n- Location: ${editingSubmission.service_location}\n- Month/Year: ${editingSubmission.month_year}\n- Submitted by: ${editingSubmission.submitted_by_username || 'Unknown'}\n\nThis action cannot be undone.`;
+    
+    if (window.confirm(confirmText)) {
+      try {
+        const response = await axios.delete(`${API}/submissions/${editingSubmission.id}`, { headers: getAuthHeader() });
+        alert('Submission deleted successfully!');
+        setEditingSubmission(null);
+        setEditFormData({});
+        fetchSubmissions(); // Refresh the submissions list
+      } catch (error) {
+        alert('Error deleting submission: ' + (error.response?.data?.detail || error.message));
+      }
     }
   };
 
