@@ -779,12 +779,7 @@ const RoleManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button
                       onClick={() => handleEdit(role)}
-                      className={`${
-                        role.is_system_role 
-                          ? 'text-gray-400 cursor-not-allowed' 
-                          : 'text-blue-600 hover:text-blue-900'
-                      }`}
-                      disabled={role.is_system_role}
+                      className="text-blue-600 hover:text-blue-900"
                     >
                       Edit
                     </button>
@@ -796,6 +791,7 @@ const RoleManagement = () => {
                           : 'text-red-600 hover:text-red-900'
                       }`}
                       disabled={role.is_system_role}
+                      title={role.is_system_role ? 'System roles cannot be deleted' : 'Delete role'}
                     >
                       Delete
                     </button>
