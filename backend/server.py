@@ -123,6 +123,26 @@ class AdminSettingCreate(BaseModel):
     setting_value: str
     description: Optional[str] = None
 
+class PasswordResetRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    username: str
+    user_id: str
+    reset_token: Optional[str] = None
+    status: str = "pending"  # pending, approved, used, expired
+    requested_at: datetime = Field(default_factory=datetime.utcnow)
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    used_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    is_active: bool = True
+
+class PasswordResetRequestCreate(BaseModel):
+    username: str
+
+class PasswordResetToken(BaseModel):
+    token: str
+    new_password: str
+
 class UserRole(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
