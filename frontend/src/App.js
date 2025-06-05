@@ -639,7 +639,20 @@ const RoleManagement = () => {
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h3 className="text-lg font-semibold mb-4">
             {editingRole ? `Edit Role: ${editingRole.display_name}` : 'Create New Role'}
+            {editingRole?.is_system_role && (
+              <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                System Role
+              </span>
+            )}
           </h3>
+          {editingRole?.is_system_role && (
+            <div className="mb-4 p-3 bg-orange-50 border-l-4 border-orange-400 text-orange-700">
+              <p className="text-sm">
+                <strong>Note:</strong> You are editing a system role. Changes will affect all users assigned to this role. 
+                System roles cannot be deleted but can be modified to meet your organization's needs.
+              </p>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
