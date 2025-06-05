@@ -2549,13 +2549,13 @@ const Reports = ({ user }) => {
         </div>
       )}
 
-      {/* Edit Submission Modal */}
+      {/* Edit Submission Modal with Tabs */}
       {editingSubmission && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Edit Submission</h3>
+                <h3 className="text-lg font-semibold">Manage Submission</h3>
                 <button
                   onClick={cancelEdit}
                   className="text-gray-400 hover:text-gray-600"
@@ -2564,50 +2564,215 @@ const Reports = ({ user }) => {
                 </button>
               </div>
               
-              <div className="mb-4 p-4 bg-gray-50 rounded">
-                <p><strong>Template:</strong> {getTemplateById(editingSubmission.template_id)?.name}</p>
-                <p><strong>Location:</strong> {editingSubmission.service_location}</p>
-                <p><strong>Month/Year:</strong> {editingSubmission.month_year}</p>
-                <p><strong>Status:</strong> 
-                  <select
-                    className="ml-2 px-2 py-1 border border-gray-300 rounded text-sm"
-                    value={editingSubmission.status}
-                    onChange={(e) => setEditingSubmission({...editingSubmission, status: e.target.value})}
+              {/* Tab Navigation */}
+              <div className="flex mb-6 border-b border-gray-200">
+                <button
+                  onClick={() => setActiveEditTab('edit')}
+                  className={`px-4 py-2 font-medium text-sm ${
+                    activeEditTab === 'edit'
+                      ? 'text-blue-600 border-b-2 border-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Edit Submission
+                </button>
+                {user.role === 'admin' && (
+                  <button
+                    onClick={() => setActiveEditTab('delete')}
+                    className={`px-4 py-2 font-medium text-sm ${
+                      activeEditTab === 'delete'
+                        ? 'text-red-600 border-b-2 border-red-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
                   >
-                    <option value="submitted">Submitted</option>
-                    <option value="reviewed">Reviewed</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
-                </p>
+                    Delete Submission
+                  </button>
+                )}
               </div>
 
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {getTemplateById(editingSubmission.template_id)?.fields.map((field, index) => (
-                  <div key={index}>
-                    <label className="block text-sm font-medium text-gray-700">
-                      {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                    </label>
-                    {renderEditFormField(field, editFormData[field.name])}
+              {/* Submission Info Header */}
+              <div className="mb-4 p-4 bg-gray-50 rounded">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><strong>Template:</strong> {getTemplateById(editingSubmission.template_id)?.name}</div>
+                  <div><strong>Location:</strong> {editingSubmission.service_location}</div>
+                  <div><strong>Month/Year:</strong> {editingSubmission.month_year}</div>
+                  <div><strong>Submitted By:</strong> {editingSubmission.submitted_by_username || 'Unknown'}</div>
+                  <div><strong>Submitted At:</strong> {new Date(editingSubmission.submitted_at).toLocaleDateString()}</div>
+                  <div>
+                    <strong>Status:</strong> 
+                    <select
+                      className="ml-2 px-2 py-1 border border-gray-300 rounded text-sm"
+                      value={editingSubmission.status}
+                      onChange={(e) => setEditingSubmission({...editingSubmission, status: e.target.value})}
+                      disabled={activeEditTab === 'delete'}
+                    >
+                      <option value="submitted">Submitted</option>
+                      <option value="reviewed">Reviewed</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
                   </div>
-                ))}
+                </div>
               </div>
 
-              <div className="flex justify-end space-x-4 mt-6">
-                <button
-                  onClick={cancelEdit}
-                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveSubmissionEdit}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Save Changes
-                </button>
-              </div>
+              {/* Edit Tab Content */}
+              {activeEditTab === 'edit' && (
+                <div>
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {getTemplateById(editingSubmission.template_id)?.fields.map((field, index) => (
+                      <div key={index}>
+                        <label className="block text-sm font-medium text-gray-700">
+                          {field.label}
+                          {field.required && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                        {renderEditFormField(field, editFormData[field.name])}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end space-x-4 mt-6">
+                    <button
+                      onClick={cancelEdit}
+                      className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveSubmissionEdit}
+                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Delete Tab Content */}
+              {activeEditTab === 'delete' && user.role === 'admin' && (
+                <div>
+                  <div className="space-y-6">
+                    {/* Warning Message */}
+                    <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">
+                            Warning: Permanent Deletion
+                          </h3>
+                          <div className="mt-2 text-sm text-red-700">
+                            <p>
+                              You are about to permanently delete this submission. This action cannot be undone.
+                              All data associated with this submission will be lost forever.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Submission Details for Confirmation */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <h4 className="font-medium text-gray-900 mb-3">Submission Details to be Deleted:</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Submission ID:</span>
+                          <span className="font-mono text-xs">{editingSubmission.id}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Template:</span>
+                          <span>{getTemplateById(editingSubmission.template_id)?.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Location:</span>
+                          <span>{editingSubmission.service_location}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Period:</span>
+                          <span>{editingSubmission.month_year}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Submitted By:</span>
+                          <span>{editingSubmission.submitted_by_username || 'Unknown User'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Submitted Date:</span>
+                          <span>{new Date(editingSubmission.submitted_at).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Current Status:</span>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            editingSubmission.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            editingSubmission.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
+                            editingSubmission.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {editingSubmission.status}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Form Fields:</span>
+                          <span>{Object.keys(editingSubmission.form_data || {}).length} fields</span>
+                        </div>
+                        {editingSubmission.attachments && editingSubmission.attachments.length > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Attachments:</span>
+                            <span>{editingSubmission.attachments.length} files</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Form Data Preview */}
+                    {Object.keys(editingSubmission.form_data || {}).length > 0 && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <h4 className="font-medium text-gray-900 mb-3">Form Data Preview:</h4>
+                        <div className="space-y-2 text-sm max-h-40 overflow-y-auto">
+                          {Object.entries(editingSubmission.form_data || {}).map(([key, value]) => (
+                            <div key={key} className="flex justify-between py-1 border-b border-gray-200 last:border-b-0">
+                              <span className="text-gray-600 font-medium">{key}:</span>
+                              <span className="text-gray-800 max-w-xs truncate" title={value}>
+                                {value || '(empty)'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Confirmation Checkbox */}
+                    <div className="flex items-center space-x-3 p-4 bg-red-50 rounded-lg">
+                      <input
+                        type="checkbox"
+                        id="confirmDelete"
+                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                        onChange={(e) => setDeleteConfirmed(e.target.checked)}
+                      />
+                      <label htmlFor="confirmDelete" className="text-sm text-red-800">
+                        I understand that this action is permanent and cannot be undone
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-4 mt-6">
+                    <button
+                      onClick={cancelEdit}
+                      className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={deleteSubmission}
+                      disabled={!deleteConfirmed}
+                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Delete Submission
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
