@@ -958,12 +958,55 @@ const UserManagement = () => {
     setEditingUser(null);
   };
 
+  const resetPasswordForm = () => {
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPasswordReset(false);
+    setResettingUser(null);
+  };
+
   const handleRoleChange = (newRole) => {
     setNewUser({
       ...newUser, 
       role: newRole,
       page_permissions: getDefaultPermissions(newRole)
     });
+  };
+
+  const handlePasswordReset = async (userId, username) => {
+    const user = users.find(u => u.id === userId);
+    setResettingUser(user);
+    setShowPasswordReset(true);
+  };
+
+  const submitPasswordReset = async () => {
+    if (!newPassword) {
+      alert('Please enter a new password');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API}/users/${resettingUser.id}/reset-password`,
+        { new_password: newPassword },
+        { headers: getAuthHeader() }
+      );
+
+      alert(`Password reset successfully for ${resettingUser.username}`);
+      resetPasswordForm();
+    } catch (error) {
+      alert('Error resetting password: ' + (error.response?.data?.detail || error.message));
+    }
   };
 
   const handleEdit = (user) => {
