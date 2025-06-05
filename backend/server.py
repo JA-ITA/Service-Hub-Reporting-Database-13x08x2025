@@ -346,6 +346,79 @@ async def update_user(user_id: str, user_data: dict, current_user: User = Depend
     await db.users.update_one({"id": user_id}, {"$set": user_data})
     return {"message": "User updated successfully"}
 
+@api_router.post("/users/{user_id}/reset-password")
+async def reset_user_password(user_id: str, password_data: dict, current_user: User = Depends(require_role(["admin"]))):
+    """Reset a user's password (Admin only)"""
+    # Check if user exists
+    existing_user = await db.users.find_one({"id": user_id})
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate new password
+    new_password = password_data.get("new_password")
+    if not new_password:
+        raise HTTPException(status_code=400, detail="New password is required")
+    
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long")
+    
+    # Hash and update password
+    hashed_password = hash_password(new_password)
+    
+    update_data = {
+        "password_hash": hashed_password,
+        "updated_at": datetime.utcnow(),
+        "updated_by": current_user.id,
+        "password_reset_at": datetime.utcnow(),
+        "password_reset_by": current_user.id
+    }
+    
+    await db.users.update_one({"id": user_id}, {"$set": update_data})
+    
+    return {
+        "message": "Password reset successfully",
+        "username": existing_user["username"],
+        "reset_by": current_user.username,
+        "reset_at": datetime.utcnow().isoformat()
+    }
+
+@api_router.post("/users/change-password")
+async def change_own_password(password_data: dict, current_user: User = Depends(get_current_user)):
+    """Allow users to change their own password"""
+    current_password = password_data.get("current_password")
+    new_password = password_data.get("new_password")
+    
+    if not current_password or not new_password:
+        raise HTTPException(status_code=400, detail="Both current and new passwords are required")
+    
+    # Verify current password
+    user = await db.users.find_one({"id": current_user.id})
+    if not user or not verify_password(current_password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Validate new password
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long")
+    
+    if new_password == current_password:
+        raise HTTPException(status_code=400, detail="New password must be different from current password")
+    
+    # Hash and update password
+    hashed_password = hash_password(new_password)
+    
+    update_data = {
+        "password_hash": hashed_password,
+        "updated_at": datetime.utcnow(),
+        "password_changed_at": datetime.utcnow()
+    }
+    
+    await db.users.update_one({"id": current_user.id}, {"$set": update_data})
+    
+    return {
+        "message": "Password changed successfully",
+        "changed_at": datetime.utcnow().isoformat()
+    }
+
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: User = Depends(require_role(["admin"]))):
     await db.users.update_one({"id": user_id}, {"$set": {"is_active": False}})
