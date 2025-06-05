@@ -109,23 +109,26 @@ const Navigation = ({ user, activeTab, setActiveTab, onLogout }) => {
       { id: 'templates', label: 'Manage Templates' },
       { id: 'reports', label: 'Reports' },
       { id: 'submit', label: 'Submit Data' },
-      { id: 'statistics', label: 'Statistics' }
+      { id: 'statistics', label: 'Statistics' },
+      { id: 'change-password', label: 'Change Password' }
     ];
 
     // Filter tabs based on user permissions
     if (user.page_permissions && user.page_permissions.length > 0) {
-      return allTabs.filter(tab => user.page_permissions.includes(tab.id));
+      // Always include change-password for all users
+      const userTabs = allTabs.filter(tab => user.page_permissions.includes(tab.id) || tab.id === 'change-password');
+      return userTabs;
     }
 
     // Fallback to role-based tabs if no permissions defined
     const roleTabs = {
-      admin: ['dashboard', 'users', 'roles', 'locations', 'templates', 'reports', 'submit', 'statistics'],
-      manager: ['dashboard', 'submit', 'reports'],
-      data_entry: ['dashboard', 'submit'],
-      statistician: ['dashboard', 'statistics', 'reports']
+      admin: ['dashboard', 'users', 'roles', 'locations', 'templates', 'reports', 'submit', 'statistics', 'change-password'],
+      manager: ['dashboard', 'submit', 'reports', 'change-password'],
+      data_entry: ['dashboard', 'submit', 'change-password'],
+      statistician: ['dashboard', 'statistics', 'reports', 'change-password']
     };
 
-    const userTabs = roleTabs[user.role] || ['dashboard'];
+    const userTabs = roleTabs[user.role] || ['dashboard', 'change-password'];
     return allTabs.filter(tab => userTabs.includes(tab.id));
   };
 
