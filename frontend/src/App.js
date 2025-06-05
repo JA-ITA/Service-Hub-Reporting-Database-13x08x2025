@@ -2095,6 +2095,7 @@ const Reports = ({ user }) => {
   const [editingSubmission, setEditingSubmission] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [activeEditTab, setActiveEditTab] = useState('edit'); // 'edit' or 'delete'
   const [summaryData, setSummaryData] = useState({
     byTemplate: {},
     byLocation: {},
