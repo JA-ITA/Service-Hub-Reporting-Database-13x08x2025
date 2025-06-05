@@ -586,16 +586,12 @@ const RoleManagement = () => {
   };
 
   const handleEdit = (role) => {
-    if (role.is_system_role) {
-      alert('System roles cannot be edited');
-      return;
-    }
     fetchRoleForEdit(role.id);
   };
 
   const handleDelete = async (roleId, roleName, isSystemRole) => {
     if (isSystemRole) {
-      alert('System roles cannot be deleted');
+      alert('System roles cannot be deleted as they are essential for system functionality');
       return;
     }
 
