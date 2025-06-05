@@ -814,8 +814,110 @@ const RoleManagement = () => {
   );
 };
 
-// User Management Component (Admin only)
-// User Management Component (Admin only)
+// Change Password Component (for all users)
+const ChangePassword = ({ user }) => {
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  const [isChanging, setIsChanging] = useState(false);
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      alert('New passwords do not match');
+      return;
+    }
+
+    if (passwordData.new_password.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (passwordData.current_password === passwordData.new_password) {
+      alert('New password must be different from current password');
+      return;
+    }
+
+    setIsChanging(true);
+    try {
+      await axios.post(`${API}/users/change-password`, {
+        current_password: passwordData.current_password,
+        new_password: passwordData.new_password
+      }, { headers: getAuthHeader() });
+
+      alert('Password changed successfully!');
+      setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (error) {
+      alert('Error changing password: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsChanging(false);
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-6">Change Password</h2>
+      
+      <div className="max-w-md bg-white p-6 rounded-lg shadow">
+        <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-400">
+          <p className="text-sm text-blue-700">
+            <strong>User:</strong> {user.username}<br/>
+            <strong>Role:</strong> {user.role}
+          </p>
+        </div>
+
+        <form onSubmit={handlePasswordChange} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Current Password</label>
+            <input
+              type="password"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={passwordData.current_password}
+              onChange={(e) => setPasswordData({...passwordData, current_password: e.target.value})}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">New Password</label>
+            <input
+              type="password"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={passwordData.new_password}
+              onChange={(e) => setPasswordData({...passwordData, new_password: e.target.value})}
+              minLength="6"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+            <input
+              type="password"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={passwordData.confirm_password}
+              onChange={(e) => setPasswordData({...passwordData, confirm_password: e.target.value})}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isChanging}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            {isChanging ? 'Changing Password...' : 'Change Password'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // User Management Component (Admin only)
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
