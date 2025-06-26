@@ -536,6 +536,48 @@ async def get_password_reset_requests(current_user: User = Depends(require_role(
     
     return requests
 
+@api_router.get("/admin/deleted-users")
+async def get_deleted_users(current_user: User = Depends(require_role(["admin"]))):
+    """Get all deleted/inactive users"""
+    deleted_users = await db.users.find({"is_active": False}).to_list(1000)
+    
+    # Remove password hashes and ObjectIds for security
+    for user in deleted_users:
+        if "_id" in user:
+            del user["_id"]
+        if "password_hash" in user:
+            del user["password_hash"]
+    
+    return deleted_users
+
+@api_router.post("/admin/restore-user/{user_id}")
+async def restore_user(user_id: str, current_user: User = Depends(require_role(["admin"]))):
+    """Restore a deleted user"""
+    # Check if user exists and is deleted
+    user = await db.users.find_one({"id": user_id, "is_active": False})
+    if not user:
+        raise HTTPException(status_code=404, detail="Deleted user not found")
+    
+    # Restore the user
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_active": True,
+            "restored_at": datetime.utcnow(),
+            "restored_by": current_user.id,
+            "updated_at": datetime.utcnow(),
+            "updated_by": current_user.id
+        }}
+    )
+    
+    return {
+        "message": "User restored successfully",
+        "user_id": user_id,
+        "username": user.get("username"),
+        "restored_by": current_user.username,
+        "restored_at": datetime.utcnow().isoformat()
+    }
+
 @api_router.get("/users/{user_id}")
 async def get_user(user_id: str, current_user: User = Depends(require_role(["admin"]))):
     user = await db.users.find_one({"id": user_id})
