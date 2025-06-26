@@ -274,7 +274,8 @@ async def initialize_default_data():
             username="admin",
             password_hash=hash_password("admin123"),
             role="admin",
-            page_permissions=get_default_permissions("admin")
+            page_permissions=get_default_permissions("admin"),
+            status="approved"  # Admin is pre-approved
         )
         await db.users.insert_one(admin_user.dict())
     else:
