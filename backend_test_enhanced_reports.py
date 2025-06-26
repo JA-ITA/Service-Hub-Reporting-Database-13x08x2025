@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 class EnhancedReportsAPITester:
-    def __init__(self, base_url="https://55c412e3-2b8e-4750-8c0e-a5c30dd61220.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://e2f25f62-fd90-478f-a483-cf62a80407f6.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
