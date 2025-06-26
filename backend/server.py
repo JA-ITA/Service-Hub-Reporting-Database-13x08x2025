@@ -56,6 +56,9 @@ class User(BaseModel):
     page_permissions: List[str] = []  # List of allowed pages
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_active: bool = True
+    status: str = "approved"  # "pending", "approved", "rejected"
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
 
 class UserCreate(BaseModel):
     username: str
