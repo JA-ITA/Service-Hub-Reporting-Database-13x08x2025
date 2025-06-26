@@ -69,6 +69,12 @@ class UserCreate(BaseModel):
     has_all_locations: bool = False
     page_permissions: List[str] = []
 
+class UserRegister(BaseModel):
+    username: str
+    password: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+
 class UserLogin(BaseModel):
     username: str
     password: str
