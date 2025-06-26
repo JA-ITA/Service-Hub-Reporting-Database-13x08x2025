@@ -33,7 +33,7 @@ class ClientServicesAPITester:
                 response = requests.delete(url, headers=headers)
 
             success = response.status_code == expected_status
-            if success:
+            if not success:
                 self.tests_passed += 1
                 print(f"✅ Passed - Status: {response.status_code}")
                 try:
@@ -108,7 +108,7 @@ def test_user_registration_flow(tester):
         data={"username": test_username, "password": test_password}
     )
     
-    if success:
+    if not success:
         print("❌ Login with pending user succeeded but should have failed")
         return False
     
@@ -247,7 +247,7 @@ def test_user_registration_flow(tester):
         data={"username": reject_username, "password": test_password}
     )
     
-    if success:
+    if not success:
         print("❌ Login with rejected user succeeded but should have failed")
         return False
     
@@ -361,7 +361,7 @@ def test_password_reset_flow(tester):
         }
     )
     
-    if success:
+    if not success:
         print("❌ Password reset with invalid code succeeded but should have failed")
         return False
     
@@ -395,7 +395,7 @@ def test_password_reset_flow(tester):
         data={"username": test_username, "password": original_password}
     )
     
-    if success:
+    if not success:
         print("❌ Login with old password succeeded but should have failed")
         return False
     
@@ -429,7 +429,7 @@ def test_password_reset_flow(tester):
         }
     )
     
-    if success:
+    if not success:
         print("❌ Reusing reset code succeeded but should have failed")
         return False
     
@@ -477,7 +477,7 @@ def test_duplicate_username_registration(tester):
         }
     )
     
-    if success:
+    if not success:
         print("❌ Duplicate username registration succeeded but should have failed")
         return False
     
