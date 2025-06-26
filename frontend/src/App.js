@@ -1892,6 +1892,79 @@ const UserManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Deleted Users Tab */}
+      {activeTab === 'deleted' && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Deleted Users</h3>
+            {deletedUsers.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No deleted users</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full table-auto">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned Location</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deleted Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deleted By</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {deletedUsers.map(user => (
+                      <tr key={user.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {user.username}
+                          <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs rounded">
+                            Deleted
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            user.role === 'admin' ? 'bg-red-100 text-red-800' :
+                            user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                            user.role === 'statistician' ? 'bg-purple-100 text-purple-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {availableRoles.find(r => r.name === user.role)?.display_name || user.role}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.assigned_location || 'None'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.deleted_at ? new Date(user.deleted_at).toLocaleString() : 'Unknown'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.deleted_by ? 
+                            users.find(u => u.id === user.deleted_by)?.username || 'Unknown Admin' : 
+                            'Unknown'
+                          }
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => handleRestoreUser(user.id)}
+                            className="text-green-600 hover:text-green-900"
+                            disabled={user.username === 'admin'}
+                            title={user.username === 'admin' ? 'Admin user cannot be restored' : 'Restore user'}
+                          >
+                            Restore
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
