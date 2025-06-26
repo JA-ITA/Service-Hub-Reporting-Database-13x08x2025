@@ -157,7 +157,10 @@ class ClientServicesAPITester:
         
         if success and 'reset_code' in response:
             reset_code = response['reset_code']
-            self.test_users[username]["reset_code"] = reset_code
+            if username in self.test_users:
+                self.test_users[username]["reset_code"] = reset_code
+            else:
+                self.test_users[username] = {"reset_code": reset_code}
             print(f"Password reset code generated: {reset_code}")
             return reset_code
         return None
