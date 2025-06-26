@@ -123,6 +123,319 @@ const Login = ({ onLogin }) => {
     </div>
   );
 };
+// Register Component
+const Register = ({ onBack }) => {
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    confirmPassword: '',
+    full_name: '',
+    email: ''
+  });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await axios.post(`${API}/auth/register`, {
+        username: formData.username,
+        password: formData.password,
+        full_name: formData.full_name,
+        email: formData.email
+      });
+
+      setSuccess(response.data.message);
+      setFormData({
+        username: '',
+        password: '',
+        confirmPassword: '',
+        full_name: '',
+        email: ''
+      });
+    } catch (error) {
+      setError(error.response?.data?.detail || 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Register</h1>
+          <p className="text-gray-600 mt-2">Create a new account</p>
+        </div>
+
+        {success && (
+          <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+            {success}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Username *</label>
+            <input
+              type="text"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={formData.username}
+              onChange={(e) => setFormData({...formData, username: e.target.value})}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Full Name</label>
+            <input
+              type="text"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={formData.full_name}
+              onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <input
+              type="email"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Password *</label>
+            <input
+              type="password"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              minLength="6"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Confirm Password *</label>
+            <input
+              type="password"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+              required
+            />
+          </div>
+          
+          {error && <div className="text-red-600 text-sm">{error}</div>}
+          
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            {isLoading ? 'Registering...' : 'Register'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={onBack}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            ← Back to Login
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Forgot Password Component
+const ForgotPassword = ({ onBack }) => {
+  const [step, setStep] = useState(1); // 1: enter username, 2: enter reset code
+  const [formData, setFormData] = useState({
+    username: '',
+    reset_code: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInitiateReset = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post(`${API}/auth/forgot-password`, {
+        username: formData.username
+      });
+
+      setSuccess(`Reset code: ${response.data.reset_code}`);
+      setStep(2);
+    } catch (error) {
+      setError(error.response?.data?.detail || 'Failed to initiate password reset');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCompleteReset = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (formData.new_password !== formData.confirm_password) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.new_password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await axios.post(`${API}/auth/reset-password`, {
+        username: formData.username,
+        reset_code: formData.reset_code,
+        new_password: formData.new_password
+      });
+
+      setSuccess('Password reset successfully! You can now login with your new password.');
+      setTimeout(() => {
+        onBack();
+      }, 3000);
+    } catch (error) {
+      setError(error.response?.data?.detail || 'Failed to reset password');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Reset Password</h1>
+          <p className="text-gray-600 mt-2">
+            {step === 1 ? 'Enter your username' : 'Enter reset code and new password'}
+          </p>
+        </div>
+
+        {success && (
+          <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+            {success}
+          </div>
+        )}
+
+        {step === 1 ? (
+          <form onSubmit={handleInitiateReset} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Username</label>
+              <input
+                type="text"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={formData.username}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                required
+              />
+            </div>
+            
+            {error && <div className="text-red-600 text-sm">{error}</div>}
+            
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {isLoading ? 'Generating Reset Code...' : 'Get Reset Code'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleCompleteReset} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Reset Code</label>
+              <input
+                type="text"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={formData.reset_code}
+                onChange={(e) => setFormData({...formData, reset_code: e.target.value})}
+                placeholder="Enter the 6-digit reset code"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">New Password</label>
+              <input
+                type="password"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={formData.new_password}
+                onChange={(e) => setFormData({...formData, new_password: e.target.value})}
+                minLength="6"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+              <input
+                type="password"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={formData.confirm_password}
+                onChange={(e) => setFormData({...formData, confirm_password: e.target.value})}
+                required
+              />
+            </div>
+            
+            {error && <div className="text-red-600 text-sm">{error}</div>}
+            
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {isLoading ? 'Resetting Password...' : 'Reset Password'}
+            </button>
+          </form>
+        )}
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={onBack}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            ← Back to Login
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Navigation Component
 const Navigation = ({ user, activeTab, setActiveTab, onLogout }) => {
