@@ -1708,6 +1708,153 @@ const UserManagement = () => {
         </div>
       )}
 
+      {/* Content based on active tab */}
+      {activeTab === 'users' && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {users.map(user => (
+                  <tr key={user.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {user.username}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        user.role === 'admin' ? 'bg-red-100 text-red-800' :
+                        user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                        user.role === 'statistician' ? 'bg-purple-100 text-purple-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {availableRoles.find(r => r.name === user.role)?.display_name || user.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.assigned_location || 'None'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleEdit(user)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handlePasswordReset(user.id, user.username)}
+                        className="text-orange-600 hover:text-orange-900"
+                      >
+                        Reset Password
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-600 hover:text-red-900"
+                        disabled={user.username === 'admin'}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Users Tab */}
+      {activeTab === 'pending' && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Users Pending Approval</h3>
+            {pendingUsers.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No users pending approval</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingUsers.map(user => (
+                  <div key={user.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-medium text-gray-900">{user.username}</h4>
+                        <div className="mt-2 space-y-1 text-sm text-gray-600">
+                          <p><strong>Full Name:</strong> {user.full_name || 'Not provided'}</p>
+                          <p><strong>Email:</strong> {user.email || 'Not provided'}</p>
+                          <p><strong>Registered:</strong> {new Date(user.created_at).toLocaleString()}</p>
+                          <p><strong>Status:</strong> 
+                            <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                              Pending Approval
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="ml-4 flex-shrink-0">
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Assign Role</label>
+                            <select
+                              className="px-3 py-1 border border-gray-300 rounded text-sm"
+                              id={`role-${user.id}`}
+                              defaultValue="data_entry"
+                            >
+                              {availableRoles.map(role => (
+                                <option key={role.name} value={role.name}>{role.display_name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Assign Location</label>
+                            <select
+                              className="px-3 py-1 border border-gray-300 rounded text-sm"
+                              id={`location-${user.id}`}
+                            >
+                              <option value="">Select Location</option>
+                              {locations.map(location => (
+                                <option key={location.id} value={location.name}>{location.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                const role = document.getElementById(`role-${user.id}`).value;
+                                const location = document.getElementById(`location-${user.id}`).value;
+                                handleApproveUser(user.id, 'approved', role, location);
+                              }}
+                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleApproveUser(user.id, 'rejected')}
+                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow">
         <div className="overflow-x-auto">
           <table className="min-w-full table-auto">
