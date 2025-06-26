@@ -1312,6 +1312,7 @@ const UserManagement = () => {
     fetchLocations();
     fetchAvailableRoles();
     fetchPendingUsers();
+    fetchDeletedUsers();
   }, []);
 
   const fetchUsers = async () => {
