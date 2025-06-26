@@ -156,6 +156,20 @@ class PasswordResetToken(BaseModel):
     token: str
     new_password: str
 
+class PasswordResetInitiate(BaseModel):
+    username: str
+
+class PasswordResetComplete(BaseModel):
+    username: str
+    reset_code: str
+    new_password: str
+
+class UserApproval(BaseModel):
+    user_id: str
+    status: str  # "approved" or "rejected"
+    assigned_location: Optional[str] = None
+    role: str = "data_entry"
+
 class UserRole(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
