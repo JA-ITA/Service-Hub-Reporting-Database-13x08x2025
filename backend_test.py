@@ -567,6 +567,138 @@ def test_invalid_password_reset():
     
     return True
 
+def test_deleted_users_functionality():
+    """Test the deleted users functionality"""
+    tester = ClientServicesAPITester()
+    
+    print("=" * 50)
+    print("TESTING DELETED USERS FUNCTIONALITY")
+    print("=" * 50)
+    
+    # Step 1: Login as admin
+    if not tester.test_login("admin", "admin123"):
+        print("❌ Admin login failed, stopping tests")
+        return False
+    
+    # Step 2: Create a test user
+    timestamp = datetime.now().strftime("%H%M%S")
+    test_username = f"deletetest_{timestamp}"
+    test_password = "Test123!"
+    
+    user_id = tester.test_create_user(
+        test_username,
+        test_password,
+        "data_entry",
+        "Central Hub"
+    )
+    
+    if not user_id:
+        print("❌ User creation failed, stopping tests")
+        return False
+    
+    print(f"✅ Created test user {test_username} with ID: {user_id}")
+    
+    # Step 3: Test deleting the user
+    success, response = tester.run_test(
+        f"Delete User {test_username}",
+        "DELETE",
+        f"users/{user_id}",
+        200
+    )
+    
+    if not success:
+        print(f"❌ Failed to delete user {test_username}")
+        return False
+    
+    print(f"✅ User {test_username} deleted successfully")
+    
+    # Step 4: Test getting deleted users
+    success, deleted_users = tester.run_test(
+        "Get Deleted Users",
+        "GET",
+        "admin/deleted-users",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to get deleted users")
+        return False
+    
+    # Step 5: Verify our test user is in the deleted users list
+    deleted_user = next((user for user in deleted_users if user.get('id') == user_id), None)
+    if not deleted_user:
+        print(f"❌ Test user {test_username} not found in deleted users list")
+        return False
+    
+    print(f"✅ Found deleted test user in deleted users list")
+    
+    # Step 6: Verify audit trail fields
+    if 'deleted_at' not in deleted_user or 'deleted_by' not in deleted_user:
+        print(f"❌ Audit trail missing for deleted user")
+        return False
+    
+    print(f"✅ Audit trail present - Deleted at: {deleted_user['deleted_at']}, Deleted by: {deleted_user['deleted_by']}")
+    
+    # Step 7: Test that deleted user cannot login
+    tester.token = None  # Clear token for login test
+    success, _ = tester.run_test(
+        f"Login with deleted user {test_username} (should fail)",
+        "POST",
+        "auth/login",
+        401,  # Expect unauthorized
+        data={"username": test_username, "password": test_password}
+    )
+    
+    if not success:
+        print(f"❌ Login with deleted user should have failed but succeeded")
+        return False
+    
+    print(f"✅ Login with deleted user correctly failed")
+    
+    # Step 8: Login as admin again to restore the user
+    if not tester.test_login("admin", "admin123"):
+        print("❌ Admin login failed, stopping tests")
+        return False
+    
+    # Step 9: Test restoring the user
+    success, response = tester.run_test(
+        f"Restore User {test_username}",
+        "POST",
+        f"admin/restore-user/{user_id}",
+        200
+    )
+    
+    if not success:
+        print(f"❌ Failed to restore user {test_username}")
+        return False
+    
+    print(f"✅ User {test_username} restored successfully")
+    
+    # Step 10: Verify restoration audit trail
+    if 'restored_at' not in response or 'restored_by' not in response:
+        print(f"❌ Restoration audit trail missing")
+        return False
+    
+    print(f"✅ Restoration audit trail present - Restored at: {response['restored_at']}, Restored by: {response['restored_by']}")
+    
+    # Step 11: Test that restored user can login
+    tester.token = None  # Clear token for login test
+    success, _ = tester.run_test(
+        f"Login with restored user {test_username}",
+        "POST",
+        "auth/login",
+        200,
+        data={"username": test_username, "password": test_password}
+    )
+    
+    if not success:
+        print(f"❌ Login with restored user failed")
+        return False
+    
+    print(f"✅ Login with restored user succeeded")
+    
+    return True
+
 def main():
     # Setup
     print("=" * 50)
@@ -581,6 +713,9 @@ def main():
     
     # Test invalid password reset scenarios
     invalid_reset_success = test_invalid_password_reset()
+    
+    # Test deleted users functionality
+    deleted_users_success = test_deleted_users_functionality()
     
     # Test basic API functionality
     tester = ClientServicesAPITester()
@@ -611,12 +746,14 @@ def main():
     print("Registration flow success: ", "✅" if registration_flow_success else "❌")
     print("Rejection flow success: ", "✅" if rejection_flow_success else "❌")
     print("Invalid reset tests success: ", "✅" if invalid_reset_success else "❌")
+    print("Deleted users functionality success: ", "✅" if deleted_users_success else "❌")
     print("=" * 50)
     
     overall_success = (
         registration_flow_success and 
         rejection_flow_success and 
         invalid_reset_success and 
+        deleted_users_success and
         tester.tests_passed == tester.tests_run
     )
     
