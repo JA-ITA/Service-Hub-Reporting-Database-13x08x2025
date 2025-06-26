@@ -1357,6 +1357,15 @@ const UserManagement = () => {
     }
   };
 
+  const fetchDeletedUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/deleted-users`, { headers: getAuthHeader() });
+      setDeletedUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching deleted users:', error);
+    }
+  };
+
   const handleApproveUser = async (userId, status, role = 'data_entry', location = '') => {
     try {
       await axios.post(`${API}/admin/approve-user`, {
@@ -1371,6 +1380,21 @@ const UserManagement = () => {
       fetchUsers();
     } catch (error) {
       alert('Error processing user approval: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const handleRestoreUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to restore this user?')) {
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/admin/restore-user/${userId}`, {}, { headers: getAuthHeader() });
+      alert('User restored successfully!');
+      fetchDeletedUsers();
+      fetchUsers();
+    } catch (error) {
+      alert('Error restoring user: ' + (error.response?.data?.detail || error.message));
     }
   };
 
