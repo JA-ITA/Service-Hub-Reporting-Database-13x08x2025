@@ -307,6 +307,12 @@ async def login(credentials: UserLogin):
     if not user["is_active"]:
         raise HTTPException(status_code=401, detail="Account is disabled")
     
+    if user.get("status", "approved") == "pending":
+        raise HTTPException(status_code=401, detail="Account is pending approval")
+    
+    if user.get("status", "approved") == "rejected":
+        raise HTTPException(status_code=401, detail="Account has been rejected")
+    
     token = create_jwt_token(user["id"], user["username"], user["role"])
     return {
         "access_token": token,
@@ -318,6 +324,109 @@ async def login(credentials: UserLogin):
             "assigned_location": user.get("assigned_location")
         }
     }
+
+@api_router.post("/auth/register")
+async def register(user_data: UserRegister):
+    """Register a new user (requires admin approval)"""
+    # Check if username already exists
+    existing_user = await db.users.find_one({"username": user_data.username})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Create new user with pending status
+    user = User(
+        username=user_data.username,
+        password_hash=hash_password(user_data.password),
+        role="data_entry",  # Default role for registered users
+        page_permissions=get_default_permissions("data_entry"),
+        status="pending",  # Requires admin approval
+        is_active=False  # Inactive until approved
+    )
+    
+    await db.users.insert_one(user.dict())
+    
+    return {
+        "message": "Registration successful. Your account is pending admin approval.",
+        "user_id": user.id,
+        "status": "pending"
+    }
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request_data: PasswordResetInitiate):
+    """Initiate password reset process"""
+    user = await db.users.find_one({"username": request_data.username})
+    if not user:
+        # Don't reveal if user exists for security
+        return {"message": "If the username exists, a reset code has been generated. Please contact your administrator."}
+    
+    # Generate a simple reset code (6-digit numeric)
+    reset_code = str(uuid.uuid4().int)[:6]
+    
+    # Create password reset request
+    reset_request = PasswordResetRequest(
+        username=user["username"],
+        user_id=user["id"],
+        reset_token=reset_code,
+        status="pending",
+        expires_at=datetime.utcnow() + timedelta(hours=24)
+    )
+    
+    await db.password_reset_requests.insert_one(reset_request.dict())
+    
+    return {
+        "message": "Password reset code generated. Please contact your administrator with this code.",
+        "reset_code": reset_code,
+        "username": user["username"]
+    }
+
+@api_router.post("/auth/reset-password")
+async def reset_password(reset_data: PasswordResetComplete):
+    """Complete password reset with code"""
+    # Find the reset request
+    reset_request = await db.password_reset_requests.find_one({
+        "username": reset_data.username,
+        "reset_token": reset_data.reset_code,
+        "status": "pending",
+        "is_active": True
+    })
+    
+    if not reset_request:
+        raise HTTPException(status_code=400, detail="Invalid reset code or username")
+    
+    # Check if expired
+    if reset_request["expires_at"] < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Reset code has expired")
+    
+    # Find user and update password
+    user = await db.users.find_one({"username": reset_data.username})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate new password
+    if len(reset_data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long")
+    
+    # Update password
+    hashed_password = hash_password(reset_data.new_password)
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "password_hash": hashed_password,
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    # Mark reset request as used
+    await db.password_reset_requests.update_one(
+        {"id": reset_request["id"]},
+        {"$set": {
+            "status": "used",
+            "used_at": datetime.utcnow(),
+            "is_active": False
+        }}
+    )
+    
+    return {"message": "Password reset successfully"}
 
 @api_router.get("/auth/me")
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
