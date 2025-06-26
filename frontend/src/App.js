@@ -40,6 +40,8 @@ const getAuthHeader = () => {
 const Login = ({ onLogin }) => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
+  const [showRegister, setShowRegister] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,9 +51,17 @@ const Login = ({ onLogin }) => {
       localStorage.setItem('user_info', JSON.stringify(response.data.user));
       onLogin(response.data.user);
     } catch (error) {
-      setError('Invalid credentials');
+      setError(error.response?.data?.detail || 'Invalid credentials');
     }
   };
+
+  if (showRegister) {
+    return <Register onBack={() => setShowRegister(false)} />;
+  }
+
+  if (showForgotPassword) {
+    return <ForgotPassword onBack={() => setShowForgotPassword(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -93,6 +103,22 @@ const Login = ({ onLogin }) => {
             Sign In
           </button>
         </form>
+
+        <div className="mt-6 text-center space-y-2">
+          <button
+            onClick={() => setShowForgotPassword(true)}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            Forgot Password?
+          </button>
+          <div className="text-gray-500">|</div>
+          <button
+            onClick={() => setShowRegister(true)}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            New User? Register Here
+          </button>
+        </div>
       </div>
     </div>
   );
