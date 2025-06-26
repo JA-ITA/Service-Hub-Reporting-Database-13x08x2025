@@ -59,6 +59,8 @@ class User(BaseModel):
     status: str = "approved"  # "pending", "approved", "rejected"
     approved_by: Optional[str] = None
     approved_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[str] = None
 
 class UserCreate(BaseModel):
     username: str
