@@ -1346,6 +1346,31 @@ const UserManagement = () => {
       ]);
     }
   };
+  const fetchPendingUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/pending-users`, { headers: getAuthHeader() });
+      setPendingUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching pending users:', error);
+    }
+  };
+
+  const handleApproveUser = async (userId, status, role = 'data_entry', location = '') => {
+    try {
+      await axios.post(`${API}/admin/approve-user`, {
+        user_id: userId,
+        status: status,
+        role: role,
+        assigned_location: location
+      }, { headers: getAuthHeader() });
+      
+      alert(`User ${status} successfully!`);
+      fetchPendingUsers();
+      fetchUsers();
+    } catch (error) {
+      alert('Error processing user approval: ' + (error.response?.data?.detail || error.message));
+    }
+  };
 
   const fetchUserForEdit = async (userId) => {
     try {
