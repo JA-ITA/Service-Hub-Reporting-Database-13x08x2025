@@ -1513,8 +1513,10 @@ const UserManagement = () => {
       try {
         await axios.delete(`${API}/users/${userId}`, { headers: getAuthHeader() });
         fetchUsers();
+        fetchDeletedUsers(); // Refresh deleted users list
       } catch (error) {
         console.error('Error deleting user:', error);
+        alert('Error deleting user: ' + (error.response?.data?.detail || error.message));
       }
     }
   };
