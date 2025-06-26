@@ -1508,6 +1508,34 @@ const UserManagement = () => {
         </button>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'users'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Active Users ({users.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'pending'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Pending Approval ({pendingUsers.length})
+            </button>
+          </nav>
+        </div>
+      </div>
+
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h3 className="text-lg font-semibold mb-4">
