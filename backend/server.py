@@ -463,6 +463,69 @@ async def get_users(current_user: User = Depends(require_role(["admin"]))):
     users = await db.users.find({"is_active": True}).to_list(1000)
     return [User(**user) for user in users]
 
+@api_router.get("/admin/pending-users")
+async def get_pending_users(current_user: User = Depends(require_role(["admin"]))):
+    """Get all pending user registrations"""
+    pending_users = await db.users.find({"status": "pending"}).to_list(1000)
+    
+    # Remove password hashes and ObjectIds for security
+    for user in pending_users:
+        if "_id" in user:
+            del user["_id"]
+        if "password_hash" in user:
+            del user["password_hash"]
+    
+    return pending_users
+
+@api_router.post("/admin/approve-user")
+async def approve_user(approval_data: UserApproval, current_user: User = Depends(require_role(["admin"]))):
+    """Approve or reject a pending user"""
+    # Find the pending user
+    pending_user = await db.users.find_one({"id": approval_data.user_id, "status": "pending"})
+    if not pending_user:
+        raise HTTPException(status_code=404, detail="Pending user not found")
+    
+    update_data = {
+        "status": approval_data.status,
+        "approved_by": current_user.id,
+        "approved_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    if approval_data.status == "approved":
+        update_data.update({
+            "is_active": True,
+            "role": approval_data.role,
+            "assigned_location": approval_data.assigned_location,
+            "page_permissions": get_default_permissions(approval_data.role)
+        })
+    else:
+        update_data["is_active"] = False
+    
+    await db.users.update_one({"id": approval_data.user_id}, {"$set": update_data})
+    
+    return {
+        "message": f"User {approval_data.status} successfully",
+        "user_id": approval_data.user_id,
+        "username": pending_user["username"],
+        "status": approval_data.status
+    }
+
+@api_router.get("/admin/password-reset-requests")
+async def get_password_reset_requests(current_user: User = Depends(require_role(["admin"]))):
+    """Get all pending password reset requests"""
+    requests = await db.password_reset_requests.find({
+        "status": "pending",
+        "is_active": True
+    }).to_list(1000)
+    
+    # Remove ObjectIds for JSON serialization
+    for request in requests:
+        if "_id" in request:
+            del request["_id"]
+    
+    return requests
+
 @api_router.get("/users/{user_id}")
 async def get_user(user_id: str, current_user: User = Depends(require_role(["admin"]))):
     user = await db.users.find_one({"id": user_id})
