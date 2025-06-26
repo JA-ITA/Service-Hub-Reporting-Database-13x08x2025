@@ -1261,6 +1261,7 @@ const ChangePassword = ({ user }) => {
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
+  const [deletedUsers, setDeletedUsers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [availableRoles, setAvailableRoles] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -1269,7 +1270,7 @@ const UserManagement = () => {
   const [resettingUser, setResettingUser] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [activeTab, setActiveTab] = useState('users'); // 'users' or 'pending'
+  const [activeTab, setActiveTab] = useState('users'); // 'users', 'pending', or 'deleted'
   const [newUser, setNewUser] = useState({
     username: '',
     password: '',
