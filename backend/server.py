@@ -650,8 +650,34 @@ async def change_own_password(password_data: dict, current_user: User = Depends(
 
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: User = Depends(require_role(["admin"]))):
-    await db.users.update_one({"id": user_id}, {"$set": {"is_active": False}})
-    return {"message": "User deleted successfully"}
+    """Soft delete a user (mark as inactive)"""
+    # Check if user exists
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent deleting the admin user
+    if user.get("username") == "admin":
+        raise HTTPException(status_code=403, detail="Cannot delete admin user")
+    
+    # Mark user as inactive with audit trail
+    await db.users.update_one(
+        {"id": user_id}, 
+        {"$set": {
+            "is_active": False,
+            "deleted_at": datetime.utcnow(),
+            "deleted_by": current_user.id,
+            "updated_at": datetime.utcnow(),
+            "updated_by": current_user.id
+        }}
+    )
+    
+    return {
+        "message": "User deleted successfully",
+        "username": user.get("username"),
+        "deleted_by": current_user.username,
+        "deleted_at": datetime.utcnow().isoformat()
+    }
 
 # Service Location Routes
 @api_router.post("/locations", response_model=ServiceLocation)
