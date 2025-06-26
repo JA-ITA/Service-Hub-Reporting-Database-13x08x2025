@@ -343,7 +343,14 @@ async def register(user_data: UserRegister):
         is_active=False  # Inactive until approved
     )
     
-    await db.users.insert_one(user.dict())
+    # Add additional fields if provided
+    user_dict = user.dict()
+    if user_data.full_name:
+        user_dict["full_name"] = user_data.full_name
+    if user_data.email:
+        user_dict["email"] = user_data.email
+    
+    await db.users.insert_one(user_dict)
     
     return {
         "message": "Registration successful. Your account is pending admin approval.",
