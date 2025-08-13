@@ -2529,55 +2529,137 @@ const TemplateManagement = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fields</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Locations</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {templates.map(template => (
-                <tr key={template.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {template.name}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {template.description || 'No description'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {template.fields.length} fields
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {template.assigned_locations.join(', ') || 'None'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(template.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => handleEdit(template)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(template.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
+      {/* Tabs */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'active'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Active Templates ({templates.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('deleted')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'deleted'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Deleted Templates ({deletedTemplates.length})
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Active Templates Tab */}
+      {activeTab === 'active' && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fields</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Locations</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {templates.map(template => (
+                  <tr key={template.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {template.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {template.description || 'No description'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {template.fields.length} fields
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {template.assigned_locations.join(', ') || 'None'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(template.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleEdit(template)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(template.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Deleted Templates Tab */}
+      {activeTab === 'deleted' && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fields</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Locations</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {deletedTemplates.map(template => (
+                  <tr key={template.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {template.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {template.description || 'No description'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {template.fields.length} fields
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {template.assigned_locations.join(', ') || 'None'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(template.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleRestore(template.id)}
+                        className="text-green-600 hover:text-green-900"
+                      >
+                        Restore
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
         </div>
       </div>
     </div>
