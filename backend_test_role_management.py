@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 
 class RoleManagementTester:
-    def __init__(self, base_url="https://9524735e-4d44-4b90-abd6-d20a94a99187.preview.emergentagent.com"):
+    def __init__(self, base_url="https://function-check-1.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None
