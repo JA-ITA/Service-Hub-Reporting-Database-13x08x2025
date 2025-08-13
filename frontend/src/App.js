@@ -3818,13 +3818,185 @@ const Statistics = ({ user }) => {
           </div>
         </div>
 
-        <button
-          onClick={generateReport}
-          disabled={loading}
-          className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? 'Generating...' : 'Generate Report'}
-        </button>
+        {/* Custom Field Analysis Section */}
+        <div className="mb-4">
+          <div className="flex items-center mb-4">
+            <input
+              type="checkbox"
+              id="customFieldAnalysis"
+              checked={showCustomFieldAnalysis}
+              onChange={(e) => {
+                setShowCustomFieldAnalysis(e.target.checked);
+                setQuery({...query, analyze_custom_fields: e.target.checked});
+              }}
+              className="mr-2"
+            />
+            <label htmlFor="customFieldAnalysis" className="text-sm font-medium text-gray-700">
+              Enable Custom Field Analysis
+            </label>
+          </div>
+
+          {showCustomFieldAnalysis && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Custom Field</label>
+                <select
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  value={query.custom_field_name}
+                  onChange={(e) => setQuery({...query, custom_field_name: e.target.value})}
+                >
+                  <option value="">Select a field...</option>
+                  {customFields.map(field => (
+                    <option key={field.name} value={field.name}>
+                      {field.label} ({field.type}) - {field.template}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Analysis Type</label>
+                <select
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  value={query.custom_field_analysis_type}
+                  onChange={(e) => setQuery({...query, custom_field_analysis_type: e.target.value})}
+                >
+                  <option value="frequency">Frequency Count</option>
+                  <option value="numerical">Numerical Analysis</option>
+                  <option value="trend">Trend Over Time</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={generateCustomFieldReport}
+                  disabled={loading || !query.custom_field_name}
+                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {loading ? 'Analyzing...' : 'Analyze Field'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex space-x-4">
+          <button
+            onClick={generateReport}
+            disabled={loading}
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Generating...' : 'Generate Report'}
+          </button>
+          
+          <button
+            onClick={generatePDFReport}
+            disabled={!statisticsData}
+            className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+          >
+            Download PDF Report
+          </button>
+        </div>
+      </div>
+
+      {/* Custom Field Analysis Results */}
+      {customFieldData && (
+        <div className="bg-white p-6 rounded-lg shadow mb-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Custom Field Analysis: {customFieldData.field_name} ({customFieldData.analysis_type})
+          </h3>
+          
+          {customFieldData.analysis_type === 'numerical' && customFieldData.results[0] && (
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Count</div>
+                <div className="text-lg font-bold">{customFieldData.results[0].total_count}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Average</div>
+                <div className="text-lg font-bold">{customFieldData.results[0].average}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Sum</div>
+                <div className="text-lg font-bold">{customFieldData.results[0].sum}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Min</div>
+                <div className="text-lg font-bold">{customFieldData.results[0].min}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Max</div>
+                <div className="text-lg font-bold">{customFieldData.results[0].max}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Std Dev</div>
+                <div className="text-lg font-bold">{customFieldData.results[0].std_dev}</div>
+              </div>
+            </div>
+          )}
+
+          {customFieldData.analysis_type === 'frequency' && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Count</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {customFieldData.results.map((item, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {item.value || 'Empty'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.count}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.percentage?.toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {customFieldData.analysis_type === 'trend' && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Submissions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Values</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {customFieldData.results.map((item, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {item.month}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.total_submissions}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {item.values.map((val, i) => (
+                          <span key={i} className="inline-block mr-2 mb-1 px-2 py-1 bg-blue-100 rounded">
+                            {val.value}: {val.count}
+                          </span>
+                        ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        }
       </div>
 
       {/* Results */}
