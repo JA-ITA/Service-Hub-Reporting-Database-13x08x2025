@@ -2336,8 +2336,22 @@ const TemplateManagement = () => {
       try {
         await axios.delete(`${API}/templates/${templateId}`, { headers: getAuthHeader() });
         fetchTemplates();
+        fetchDeletedTemplates();
       } catch (error) {
         console.error('Error deleting template:', error);
+      }
+    }
+  };
+
+  const handleRestore = async (templateId) => {
+    if (window.confirm('Are you sure you want to restore this template?')) {
+      try {
+        await axios.post(`${API}/templates/${templateId}/restore`, {}, { headers: getAuthHeader() });
+        fetchTemplates();
+        fetchDeletedTemplates();
+        alert('Template restored successfully');
+      } catch (error) {
+        alert('Error restoring template: ' + (error.response?.data?.detail || error.message));
       }
     }
   };
