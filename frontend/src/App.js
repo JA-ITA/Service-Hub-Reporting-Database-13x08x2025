@@ -2660,8 +2660,6 @@ const TemplateManagement = () => {
           </div>
         </div>
       )}
-        </div>
-      </div>
     </div>
   );
 };
