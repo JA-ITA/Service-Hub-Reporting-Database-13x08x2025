@@ -2224,6 +2224,8 @@ const LocationManagement = () => {
 // Template Management Component (Admin only)
 const TemplateManagement = () => {
   const [templates, setTemplates] = useState([]);
+  const [deletedTemplates, setDeletedTemplates] = useState([]);
+  const [activeTab, setActiveTab] = useState('active');
   const [locations, setLocations] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -2236,6 +2238,7 @@ const TemplateManagement = () => {
 
   useEffect(() => {
     fetchTemplates();
+    fetchDeletedTemplates();
     fetchLocations();
   }, []);
 
@@ -2245,6 +2248,15 @@ const TemplateManagement = () => {
       setTemplates(response.data);
     } catch (error) {
       console.error('Error fetching templates:', error);
+    }
+  };
+
+  const fetchDeletedTemplates = async () => {
+    try {
+      const response = await axios.get(`${API}/templates/deleted`, { headers: getAuthHeader() });
+      setDeletedTemplates(response.data);
+    } catch (error) {
+      console.error('Error fetching deleted templates:', error);
     }
   };
 
