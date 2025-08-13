@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test all functionality and fix errors in the CLIENT SERVICES Platform - a comprehensive data collection and management system"
+user_problem_statement: "Enhance CLIENT SERVICES Platform with: 1) Statistical reports based on customizable template fields, 2) Restore functionality for deleted locations/templates, 3) Print comprehensive reports capability"
 
 backend:
   - task: "Authentication System"
