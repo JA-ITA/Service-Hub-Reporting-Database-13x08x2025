@@ -1090,24 +1090,74 @@ def test_data_submission_system():
         print("❌ Admin login failed, stopping tests")
         return False
     
-    # Get existing templates and locations
-    success, templates = tester.run_test("Get Templates", "GET", "templates", 200)
-    success2, locations = tester.run_test("Get Locations", "GET", "locations", 200)
+    # Get existing locations
+    success, locations = tester.run_test("Get Locations", "GET", "locations", 200)
     
-    if not success or not success2 or not templates or not locations:
-        print("❌ Failed to get templates or locations for submission test")
+    if not success or not locations:
+        print("❌ Failed to get locations for submission test")
         return False
     
-    template_id = templates[0]['id']
     location_name = locations[0]['name']
     
+    # Create a template for testing submissions
+    timestamp = datetime.now().strftime("%H%M%S")
+    template_name = f"Submission Test Template {timestamp}"
+    
+    template_data = {
+        "name": template_name,
+        "description": f"Template for submission testing created at {timestamp}",
+        "fields": [
+            {
+                "name": "client_name",
+                "type": "text",
+                "label": "Client Name",
+                "required": True
+            },
+            {
+                "name": "service_date",
+                "type": "date",
+                "label": "Service Date",
+                "required": True
+            },
+            {
+                "name": "service_type",
+                "type": "select",
+                "label": "Service Type",
+                "options": ["Consultation", "Treatment", "Follow-up"],
+                "required": True
+            },
+            {
+                "name": "notes",
+                "type": "textarea",
+                "label": "Notes",
+                "required": False
+            }
+        ],
+        "assigned_locations": [location_name]
+    }
+    
+    success, template_response = tester.run_test(
+        "Create Template for Submission Test",
+        "POST",
+        "templates",
+        200,
+        data=template_data
+    )
+    
+    if not success or 'id' not in template_response:
+        print("❌ Failed to create template for submission test")
+        return False
+    
+    template_id = template_response['id']
+    print(f"✅ Created template for submission test with ID: {template_id}")
+    
     # Test creating a submission
-    timestamp = datetime.now().strftime("%Y-%m")
+    month_year = datetime.now().strftime("%Y-%m")
     
     submission_data = {
         "template_id": template_id,
         "service_location": location_name,
-        "month_year": timestamp,
+        "month_year": month_year,
         "form_data": {
             "client_name": "John Doe",
             "service_date": "2025-01-15",
