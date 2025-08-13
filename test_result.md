@@ -241,8 +241,8 @@ backend:
         comment: "✅ COMPREHENSIVE TESTING COMPLETED: All database models working correctly. Verified UUID primary keys are used consistently (not MongoDB ObjectIds), proper data serialization for JSON responses, MongoDB connection working correctly, default data initialization (admin user, sample locations, system roles), and all CRUD operations functioning properly across all collections."
 
   - task: "Enhanced Statistics with Custom Field Analysis"
-    implemented: false
-    working: "NA"
+    implemented: true
+    working: "unknown"
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
@@ -251,10 +251,13 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "Need to implement statistical analysis of custom form fields within templates - numerical analysis (avg, sum, min/max), text/select frequency analysis, and trend analysis for date fields"
+      - working: "unknown"
+        agent: "main"
+        comment: "IMPLEMENTED: Added enhanced StatisticsQuery model with custom field analysis, new endpoints /statistics/custom-fields and /statistics/generate-custom-field for analyzing form field data, supporting frequency, numerical, and trend analysis types"
 
   - task: "Location Restore Functionality"
-    implemented: false
-    working: "NA"
+    implemented: true
+    working: "unknown"
     file: "backend/server.py"
     stuck_count: 0
     priority: "medium"
@@ -263,10 +266,13 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "Need to add endpoints to view and restore soft-deleted service hub locations"
+      - working: "unknown"
+        agent: "main"
+        comment: "IMPLEMENTED: Added /locations/deleted endpoint to get soft-deleted locations and /locations/{id}/restore endpoint to restore them"
 
   - task: "Template Restore Functionality"
-    implemented: false
-    working: "NA"
+    implemented: true
+    working: "unknown"
     file: "backend/server.py"
     stuck_count: 0
     priority: "medium"
@@ -275,10 +281,13 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "Need to add endpoints to view and restore soft-deleted form templates"
+      - working: "unknown"
+        agent: "main"
+        comment: "IMPLEMENTED: Added /templates/deleted endpoint to get soft-deleted templates and /templates/{id}/restore endpoint to restore them"
 
   - task: "PDF Report Generation System"
-    implemented: false
-    working: "NA"
+    implemented: true
+    working: "unknown"
     file: "backend/server.py"
     stuck_count: 0
     priority: "medium"
@@ -287,6 +296,9 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "Need to implement comprehensive PDF report generation for statistics with charts and data tables using reportlab"
+      - working: "unknown"
+        agent: "main"
+        comment: "IMPLEMENTED: Added /reports/pdf endpoint for generating comprehensive PDF reports with statistics data, summary tables, and detailed breakdowns using reportlab"
 
 frontend:
   - task: "Authentication UI"
