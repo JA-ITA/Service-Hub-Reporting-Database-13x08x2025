@@ -1496,6 +1496,519 @@ def test_admin_settings():
     
     return True
 
+def test_enhanced_statistics_custom_fields():
+    """Test enhanced statistics with custom field analysis"""
+    tester = ClientServicesAPITester()
+    
+    print("=" * 50)
+    print("TESTING ENHANCED STATISTICS WITH CUSTOM FIELD ANALYSIS")
+    print("=" * 50)
+    
+    # Login as admin
+    if not tester.test_login("admin", "admin123"):
+        print("❌ Admin login failed, stopping tests")
+        return False
+    
+    # First, create a template with custom fields for testing
+    timestamp = datetime.now().strftime("%H%M%S")
+    template_name = f"Custom Field Test Template {timestamp}"
+    
+    template_data = {
+        "name": template_name,
+        "description": "Template for custom field analysis testing",
+        "fields": [
+            {
+                "name": "client_age",
+                "type": "number",
+                "label": "Client Age",
+                "required": True
+            },
+            {
+                "name": "service_rating",
+                "type": "number", 
+                "label": "Service Rating (1-10)",
+                "required": True
+            },
+            {
+                "name": "service_category",
+                "type": "select",
+                "label": "Service Category",
+                "options": ["Healthcare", "Education", "Social Services", "Legal Aid"],
+                "required": True
+            },
+            {
+                "name": "feedback_text",
+                "type": "text",
+                "label": "Client Feedback",
+                "required": False
+            }
+        ],
+        "assigned_locations": ["Central Hub", "North Branch"]
+    }
+    
+    success, template_response = tester.run_test(
+        "Create Template for Custom Field Analysis",
+        "POST",
+        "templates",
+        200,
+        data=template_data
+    )
+    
+    if not success or 'id' not in template_response:
+        print("❌ Failed to create template for custom field analysis")
+        return False
+    
+    template_id = template_response['id']
+    print(f"✅ Created template for custom field analysis with ID: {template_id}")
+    
+    # Create test submissions with custom field data
+    test_submissions = [
+        {
+            "template_id": template_id,
+            "service_location": "Central Hub",
+            "month_year": "2025-01",
+            "form_data": {
+                "client_age": "25",
+                "service_rating": "8",
+                "service_category": "Healthcare",
+                "feedback_text": "Excellent service provided"
+            }
+        },
+        {
+            "template_id": template_id,
+            "service_location": "Central Hub", 
+            "month_year": "2025-01",
+            "form_data": {
+                "client_age": "45",
+                "service_rating": "9",
+                "service_category": "Education",
+                "feedback_text": "Very helpful staff"
+            }
+        },
+        {
+            "template_id": template_id,
+            "service_location": "North Branch",
+            "month_year": "2025-01", 
+            "form_data": {
+                "client_age": "35",
+                "service_rating": "7",
+                "service_category": "Healthcare",
+                "feedback_text": "Good overall experience"
+            }
+        },
+        {
+            "template_id": template_id,
+            "service_location": "North Branch",
+            "month_year": "2025-01",
+            "form_data": {
+                "client_age": "55",
+                "service_rating": "10",
+                "service_category": "Social Services",
+                "feedback_text": "Outstanding support"
+            }
+        }
+    ]
+    
+    submission_ids = []
+    for i, submission_data in enumerate(test_submissions):
+        success, response = tester.run_test(
+            f"Create Test Submission {i+1}",
+            "POST",
+            "submissions",
+            200,
+            data=submission_data
+        )
+        
+        if success and 'id' in response:
+            submission_ids.append(response['id'])
+            print(f"✅ Created test submission {i+1} with ID: {response['id']}")
+        else:
+            print(f"❌ Failed to create test submission {i+1}")
+            return False
+    
+    # Test getting custom fields for statistics
+    success, custom_fields = tester.run_test(
+        "Get Custom Fields for Statistics",
+        "GET",
+        "statistics/custom-fields",
+        200
+    )
+    
+    if not success or 'custom_fields' not in custom_fields:
+        print("❌ Failed to get custom fields for statistics")
+        return False
+    
+    print(f"✅ Retrieved {len(custom_fields['custom_fields'])} custom fields")
+    
+    # Test frequency analysis for service_category
+    frequency_query = {
+        "custom_field_name": "service_category",
+        "custom_field_analysis_type": "frequency",
+        "date_from": "2025-01-01T00:00:00Z",
+        "date_to": "2025-01-31T23:59:59Z"
+    }
+    
+    success, frequency_results = tester.run_test(
+        "Generate Custom Field Frequency Analysis",
+        "POST",
+        "statistics/generate-custom-field",
+        200,
+        data=frequency_query
+    )
+    
+    if not success or 'results' not in frequency_results:
+        print("❌ Failed to generate frequency analysis")
+        return False
+    
+    print("✅ Frequency analysis generated successfully")
+    print(f"Field analyzed: {frequency_results['field_name']}")
+    print(f"Analysis type: {frequency_results['analysis_type']}")
+    
+    # Test numerical analysis for client_age
+    numerical_query = {
+        "custom_field_name": "client_age",
+        "custom_field_analysis_type": "numerical",
+        "date_from": "2025-01-01T00:00:00Z",
+        "date_to": "2025-01-31T23:59:59Z"
+    }
+    
+    success, numerical_results = tester.run_test(
+        "Generate Custom Field Numerical Analysis",
+        "POST",
+        "statistics/generate-custom-field",
+        200,
+        data=numerical_query
+    )
+    
+    if not success or 'results' not in numerical_results:
+        print("❌ Failed to generate numerical analysis")
+        return False
+    
+    print("✅ Numerical analysis generated successfully")
+    if numerical_results['results']:
+        result = numerical_results['results'][0]
+        print(f"Average age: {result.get('average', 'N/A')}")
+        print(f"Min age: {result.get('min', 'N/A')}")
+        print(f"Max age: {result.get('max', 'N/A')}")
+    
+    # Test trend analysis for service_rating
+    trend_query = {
+        "custom_field_name": "service_rating",
+        "custom_field_analysis_type": "trend",
+        "date_from": "2025-01-01T00:00:00Z",
+        "date_to": "2025-01-31T23:59:59Z"
+    }
+    
+    success, trend_results = tester.run_test(
+        "Generate Custom Field Trend Analysis",
+        "POST",
+        "statistics/generate-custom-field",
+        200,
+        data=trend_query
+    )
+    
+    if not success or 'results' not in trend_results:
+        print("❌ Failed to generate trend analysis")
+        return False
+    
+    print("✅ Trend analysis generated successfully")
+    print(f"Trend data points: {len(trend_results['results'])}")
+    
+    return True
+
+def test_location_restore_functionality():
+    """Test location restore functionality"""
+    tester = ClientServicesAPITester()
+    
+    print("=" * 50)
+    print("TESTING LOCATION RESTORE FUNCTIONALITY")
+    print("=" * 50)
+    
+    # Login as admin
+    if not tester.test_login("admin", "admin123"):
+        print("❌ Admin login failed, stopping tests")
+        return False
+    
+    # Create a test location
+    timestamp = datetime.now().strftime("%H%M%S")
+    location_name = f"Restore Test Location {timestamp}"
+    
+    location_data = {
+        "name": location_name,
+        "description": f"Location for restore testing created at {timestamp}"
+    }
+    
+    success, response = tester.run_test(
+        "Create Location for Restore Test",
+        "POST",
+        "locations",
+        200,
+        data=location_data
+    )
+    
+    if not success or 'id' not in response:
+        print("❌ Failed to create location for restore test")
+        return False
+    
+    location_id = response['id']
+    print(f"✅ Created location for restore test with ID: {location_id}")
+    
+    # Delete the location (soft delete)
+    success, _ = tester.run_test(
+        "Delete Location for Restore Test",
+        "DELETE",
+        f"locations/{location_id}",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to delete location")
+        return False
+    
+    print("✅ Location deleted successfully")
+    
+    # Test getting deleted locations
+    success, deleted_locations = tester.run_test(
+        "Get Deleted Locations",
+        "GET",
+        "locations/deleted",
+        200
+    )
+    
+    if not success or not isinstance(deleted_locations, list):
+        print("❌ Failed to get deleted locations")
+        return False
+    
+    # Find our deleted location
+    deleted_location = next((loc for loc in deleted_locations if loc.get('id') == location_id), None)
+    if not deleted_location:
+        print("❌ Deleted location not found in deleted locations list")
+        return False
+    
+    print(f"✅ Found deleted location in deleted locations list: {deleted_location['name']}")
+    
+    # Test restoring the location
+    success, restore_response = tester.run_test(
+        "Restore Location",
+        "POST",
+        f"locations/{location_id}/restore",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to restore location")
+        return False
+    
+    print("✅ Location restored successfully")
+    print(f"Restored by: {restore_response.get('restored_by', 'Unknown')}")
+    
+    # Verify location is back in active locations
+    success, active_locations = tester.run_test(
+        "Get Active Locations After Restore",
+        "GET",
+        "locations",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to get active locations after restore")
+        return False
+    
+    restored_location = next((loc for loc in active_locations if loc.get('id') == location_id), None)
+    if not restored_location:
+        print("❌ Restored location not found in active locations list")
+        return False
+    
+    print("✅ Restored location found in active locations list")
+    
+    return True
+
+def test_template_restore_functionality():
+    """Test template restore functionality"""
+    tester = ClientServicesAPITester()
+    
+    print("=" * 50)
+    print("TESTING TEMPLATE RESTORE FUNCTIONALITY")
+    print("=" * 50)
+    
+    # Login as admin
+    if not tester.test_login("admin", "admin123"):
+        print("❌ Admin login failed, stopping tests")
+        return False
+    
+    # Create a test template
+    timestamp = datetime.now().strftime("%H%M%S")
+    template_name = f"Restore Test Template {timestamp}"
+    
+    template_data = {
+        "name": template_name,
+        "description": f"Template for restore testing created at {timestamp}",
+        "fields": [
+            {
+                "name": "test_field",
+                "type": "text",
+                "label": "Test Field",
+                "required": True
+            }
+        ],
+        "assigned_locations": ["Central Hub"]
+    }
+    
+    success, response = tester.run_test(
+        "Create Template for Restore Test",
+        "POST",
+        "templates",
+        200,
+        data=template_data
+    )
+    
+    if not success or 'id' not in response:
+        print("❌ Failed to create template for restore test")
+        return False
+    
+    template_id = response['id']
+    print(f"✅ Created template for restore test with ID: {template_id}")
+    
+    # Delete the template (soft delete)
+    success, _ = tester.run_test(
+        "Delete Template for Restore Test",
+        "DELETE",
+        f"templates/{template_id}",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to delete template")
+        return False
+    
+    print("✅ Template deleted successfully")
+    
+    # Test getting deleted templates
+    success, deleted_templates = tester.run_test(
+        "Get Deleted Templates",
+        "GET",
+        "templates/deleted",
+        200
+    )
+    
+    if not success or not isinstance(deleted_templates, list):
+        print("❌ Failed to get deleted templates")
+        return False
+    
+    # Find our deleted template
+    deleted_template = next((tmpl for tmpl in deleted_templates if tmpl.get('id') == template_id), None)
+    if not deleted_template:
+        print("❌ Deleted template not found in deleted templates list")
+        return False
+    
+    print(f"✅ Found deleted template in deleted templates list: {deleted_template['name']}")
+    
+    # Test restoring the template
+    success, restore_response = tester.run_test(
+        "Restore Template",
+        "POST",
+        f"templates/{template_id}/restore",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to restore template")
+        return False
+    
+    print("✅ Template restored successfully")
+    print(f"Restored by: {restore_response.get('restored_by', 'Unknown')}")
+    
+    # Verify template is back in active templates
+    success, active_templates = tester.run_test(
+        "Get Active Templates After Restore",
+        "GET",
+        "templates",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to get active templates after restore")
+        return False
+    
+    restored_template = next((tmpl for tmpl in active_templates if tmpl.get('id') == template_id), None)
+    if not restored_template:
+        print("❌ Restored template not found in active templates list")
+        return False
+    
+    print("✅ Restored template found in active templates list")
+    
+    return True
+
+def test_pdf_report_generation():
+    """Test PDF report generation functionality"""
+    tester = ClientServicesAPITester()
+    
+    print("=" * 50)
+    print("TESTING PDF REPORT GENERATION")
+    print("=" * 50)
+    
+    # Login as admin
+    if not tester.test_login("admin", "admin123"):
+        print("❌ Admin login failed, stopping tests")
+        return False
+    
+    # Test basic PDF report generation
+    success, _ = tester.run_test(
+        "Generate Basic PDF Report",
+        "GET",
+        "reports/pdf?report_type=statistics",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to generate basic PDF report")
+        return False
+    
+    print("✅ Basic PDF report generated successfully")
+    
+    # Test PDF report with query parameters
+    import json
+    query_params = {
+        "group_by": "location",
+        "date_from": "2025-01-01T00:00:00Z",
+        "date_to": "2025-01-31T23:59:59Z"
+    }
+    
+    params = {
+        "report_type": "statistics",
+        "query_params": json.dumps(query_params)
+    }
+    
+    success, _ = tester.run_test(
+        "Generate PDF Report with Parameters",
+        "GET",
+        "reports/pdf",
+        200,
+        params=params
+    )
+    
+    if not success:
+        print("❌ Failed to generate PDF report with parameters")
+        return False
+    
+    print("✅ PDF report with parameters generated successfully")
+    
+    # Test PDF report generation with different report types
+    success, _ = tester.run_test(
+        "Generate Custom PDF Report",
+        "GET",
+        "reports/pdf?report_type=custom",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to generate custom PDF report")
+        return False
+    
+    print("✅ Custom PDF report generated successfully")
+    
+    return True
+
 def main():
     # Setup
     print("=" * 50)
