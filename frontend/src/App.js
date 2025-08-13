@@ -3582,6 +3582,43 @@ const Statistics = ({ user }) => {
     }
   };
 
+  const generateCustomFieldReport = async () => {
+    if (!query.custom_field_name) {
+      alert('Please select a custom field to analyze');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API}/statistics/generate-custom-field`, query, { headers: getAuthHeader() });
+      setCustomFieldData(response.data);
+    } catch (error) {
+      alert('Error generating custom field statistics: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generatePDFReport = async () => {
+    try {
+      const queryString = encodeURIComponent(JSON.stringify(query));
+      const response = await axios.get(`${API}/reports/pdf?report_type=statistics&query_params=${queryString}`, { 
+        headers: getAuthHeader(),
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'statistics_report.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      alert('Error generating PDF report: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
   const getChartData = () => {
     if (!statisticsData || !statisticsData.data) return null;
 
