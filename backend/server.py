@@ -1332,6 +1332,10 @@ async def generate_statistics(query: StatisticsQuery, current_user: User = Depen
         group_id = "$status"
     elif query.group_by == "user_role":
         group_id = "$user_info.role"
+    elif query.group_by == "custom_field" and query.custom_field_name:
+        group_id = f"$form_data.{query.custom_field_name}"
+        # Add condition to ensure custom field exists
+        match_conditions[f"form_data.{query.custom_field_name}"] = {"$exists": True, "$ne": None}
     
     pipeline.append({
         "$group": {
