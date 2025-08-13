@@ -3998,7 +3998,6 @@ const Statistics = ({ user }) => {
           )}
         </div>
       )}
-      </div>
 
       {/* Results */}
       {statisticsData && (
