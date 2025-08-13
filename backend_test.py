@@ -2051,6 +2051,12 @@ def main():
     # Test admin settings
     test_results['admin_settings'] = test_admin_settings()
     
+    # Test new enhanced features
+    test_results['enhanced_statistics'] = test_enhanced_statistics_custom_fields()
+    test_results['location_restore'] = test_location_restore_functionality()
+    test_results['template_restore'] = test_template_restore_functionality()
+    test_results['pdf_generation'] = test_pdf_report_generation()
+    
     # Test basic API functionality
     tester = ClientServicesAPITester()
     
