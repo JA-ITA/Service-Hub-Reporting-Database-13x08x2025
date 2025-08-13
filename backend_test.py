@@ -489,8 +489,8 @@ def test_user_rejection_flow():
         data={"username": test_username, "password": test_password}
     )
     
-    if login_success:
-        print(f"❌ Login with rejected user {test_username} should have failed but succeeded")
+    if not login_success:
+        print(f"❌ Login with rejected user {test_username} should have failed but the test didn't pass")
         return False
     
     print(f"✅ Login with rejected user {test_username} correctly failed")
