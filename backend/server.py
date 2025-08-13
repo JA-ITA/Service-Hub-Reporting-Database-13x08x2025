@@ -1793,23 +1793,6 @@ async def restore_location(location_id: str, current_user: User = Depends(requir
         raise HTTPException(status_code=404, detail="Location not found or already active")
     return {"message": "Location restored successfully"}
 
-@api_router.get("/templates/deleted", response_model=List[FormTemplate])
-async def get_deleted_templates(current_user: User = Depends(require_role(["admin"]))):
-    """Get all soft-deleted templates"""
-    templates = await db.form_templates.find({"is_active": False}).to_list(1000)
-    return [FormTemplate(**template) for template in templates]
-
-@api_router.post("/templates/{template_id}/restore")
-async def restore_template(template_id: str, current_user: User = Depends(require_role(["admin"]))):
-    """Restore a soft-deleted template"""
-    result = await db.form_templates.update_one(
-        {"id": template_id, "is_active": False}, 
-        {"$set": {"is_active": True}}
-    )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Template not found or already active")
-    return {"message": "Template restored successfully"}
-
 # Enhanced submissions endpoint to include username
 @api_router.get("/submissions-detailed")
 async def get_detailed_submissions(
