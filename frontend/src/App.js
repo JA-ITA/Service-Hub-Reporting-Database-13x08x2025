@@ -3996,7 +3996,8 @@ const Statistics = ({ user }) => {
               </table>
             </div>
           )}
-        }
+        </div>
+      )}
       </div>
 
       {/* Results */}
