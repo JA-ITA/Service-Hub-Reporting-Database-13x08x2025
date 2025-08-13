@@ -1281,9 +1281,9 @@ def test_file_upload_system():
         print("❌ Admin login failed, stopping tests")
         return False
     
-    # Create a test file
-    test_content = "This is a test file for upload testing."
-    test_filename = f"test_file_{datetime.now().strftime('%H%M%S')}.txt"
+    # Create a test CSV file (which is allowed)
+    test_content = "Name,Age,City\nJohn Doe,30,New York\nJane Smith,25,Los Angeles"
+    test_filename = f"test_file_{datetime.now().strftime('%H%M%S')}.csv"
     
     with open(f"/tmp/{test_filename}", "w") as f:
         f.write(test_content)
@@ -1294,7 +1294,7 @@ def test_file_upload_system():
         headers = {'Authorization': f'Bearer {tester.token}'}
         
         with open(f"/tmp/{test_filename}", "rb") as f:
-            files = {'file': (test_filename, f, 'text/plain')}
+            files = {'file': (test_filename, f, 'text/csv')}
             response = requests.post(url, files=files, headers=headers)
         
         print(f"Upload response status: {response.status_code}")
