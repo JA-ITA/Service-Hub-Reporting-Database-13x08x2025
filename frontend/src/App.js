@@ -2029,8 +2029,22 @@ const LocationManagement = () => {
       try {
         await axios.delete(`${API}/locations/${locationId}`, { headers: getAuthHeader() });
         fetchLocations();
+        fetchDeletedLocations();
       } catch (error) {
         console.error('Error deleting location:', error);
+      }
+    }
+  };
+
+  const handleRestore = async (locationId) => {
+    if (window.confirm('Are you sure you want to restore this location?')) {
+      try {
+        await axios.post(`${API}/locations/${locationId}/restore`, {}, { headers: getAuthHeader() });
+        fetchLocations();
+        fetchDeletedLocations();
+        alert('Location restored successfully');
+      } catch (error) {
+        alert('Error restoring location: ' + (error.response?.data?.detail || error.message));
       }
     }
   };
