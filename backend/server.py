@@ -803,6 +803,17 @@ async def delete_template(template_id: str, current_user: User = Depends(require
     await db.form_templates.update_one({"id": template_id}, {"$set": {"is_active": False}})
     return {"message": "Template deleted successfully"}
 
+@api_router.post("/templates/{template_id}/restore")
+async def restore_template(template_id: str, current_user: User = Depends(require_role(["admin"]))):
+    """Restore a soft-deleted template"""
+    result = await db.form_templates.update_one(
+        {"id": template_id, "is_active": False}, 
+        {"$set": {"is_active": True}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found or already active")
+    return {"message": "Template restored successfully"}
+
 # Data Submission Routes
 @api_router.post("/submissions")
 async def create_submission(submission_data: DataSubmissionCreate, current_user: User = Depends(get_current_user)):
