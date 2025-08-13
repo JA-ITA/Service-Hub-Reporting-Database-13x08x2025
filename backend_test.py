@@ -490,10 +490,10 @@ def test_user_rejection_flow():
     )
     
     if not login_success:
-        print(f"❌ Login with rejected user {test_username} should have failed but the test didn't pass")
+        print(f"❌ Login test with rejected user {test_username} failed - expected 401 but got different status")
         return False
     
-    print(f"✅ Login with rejected user {test_username} correctly failed")
+    print(f"✅ Login with rejected user {test_username} correctly failed with 401")
     
     return True
 
