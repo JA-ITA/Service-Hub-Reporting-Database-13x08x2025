@@ -765,6 +765,12 @@ async def get_templates(current_user: User = Depends(get_current_user)):
         }).to_list(1000)
     return [FormTemplate(**template) for template in templates]
 
+@api_router.get("/templates/deleted", response_model=List[FormTemplate])
+async def get_deleted_templates(current_user: User = Depends(require_role(["admin"]))):
+    """Get all soft-deleted templates"""
+    templates = await db.form_templates.find({"is_active": False}).to_list(1000)
+    return [FormTemplate(**template) for template in templates]
+
 @api_router.get("/templates/{template_id}")
 async def get_template(template_id: str, current_user: User = Depends(require_role(["admin"]))):
     template = await db.form_templates.find_one({"id": template_id})
