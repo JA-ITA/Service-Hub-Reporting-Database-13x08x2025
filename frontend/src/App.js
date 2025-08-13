@@ -1972,12 +1972,15 @@ const UserManagement = () => {
 // Location Management Component (Admin only)
 const LocationManagement = () => {
   const [locations, setLocations] = useState([]);
+  const [deletedLocations, setDeletedLocations] = useState([]);
+  const [activeTab, setActiveTab] = useState('active');
   const [showForm, setShowForm] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
 
   useEffect(() => {
     fetchLocations();
+    fetchDeletedLocations();
   }, []);
 
   const fetchLocations = async () => {
@@ -1986,6 +1989,15 @@ const LocationManagement = () => {
       setLocations(response.data);
     } catch (error) {
       console.error('Error fetching locations:', error);
+    }
+  };
+
+  const fetchDeletedLocations = async () => {
+    try {
+      const response = await axios.get(`${API}/locations/deleted`, { headers: getAuthHeader() });
+      setDeletedLocations(response.data);
+    } catch (error) {
+      console.error('Error fetching deleted locations:', error);
     }
   };
 
