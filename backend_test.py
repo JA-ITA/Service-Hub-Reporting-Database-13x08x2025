@@ -1247,6 +1247,13 @@ def test_file_upload_system():
             files = {'file': (test_filename, f, 'text/plain')}
             response = requests.post(url, files=files, headers=headers)
         
+        print(f"Upload response status: {response.status_code}")
+        if response.status_code != 200:
+            try:
+                print(f"Upload response: {response.json()}")
+            except:
+                print(f"Upload response text: {response.text}")
+        
         if response.status_code == 200:
             upload_response = response.json()
             uploaded_filename = upload_response.get('filename')
