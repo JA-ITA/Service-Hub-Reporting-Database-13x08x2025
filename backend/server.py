@@ -1427,9 +1427,367 @@ async def get_statistics_options(current_user: User = Depends(get_current_user))
             {"id": "month", "name": "Month"},
             {"id": "template", "name": "Template"},
             {"id": "status", "name": "Status"},
-            {"id": "user_role", "name": "User Role"}
+            {"id": "user_role", "name": "User Role"},
+            {"id": "custom_field", "name": "Custom Field"}
         ]
     }
+
+@api_router.get("/statistics/custom-fields")
+async def get_custom_fields_for_statistics(current_user: User = Depends(get_current_user)):
+    """Get available custom fields from templates for statistical analysis"""
+    
+    if "statistics" not in current_user.page_permissions and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Access to statistics page denied")
+    
+    # Get all active templates
+    templates = await db.form_templates.find({"is_active": True}).to_list(1000)
+    
+    custom_fields = []
+    field_types = {}
+    
+    for template in templates:
+        for field in template.get("fields", []):
+            field_name = field.get("name", "")
+            field_type = field.get("type", "text")
+            field_label = field.get("label", field_name)
+            
+            if field_name and field_name not in field_types:
+                field_types[field_name] = field_type
+                custom_fields.append({
+                    "name": field_name,
+                    "label": field_label,
+                    "type": field_type,
+                    "template": template["name"]
+                })
+    
+    return {"custom_fields": custom_fields}
+
+@api_router.post("/statistics/generate-custom-field")
+async def generate_custom_field_statistics(query: StatisticsQuery, current_user: User = Depends(get_current_user)):
+    """Generate statistics for custom form fields"""
+    
+    if "statistics" not in current_user.page_permissions and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Access to statistics page denied")
+    
+    if not query.custom_field_name:
+        raise HTTPException(status_code=400, detail="Custom field name is required")
+    
+    # Build match conditions
+    match_conditions = {}
+    
+    # Date filtering
+    if query.date_from or query.date_to:
+        date_filter = {}
+        if query.date_from:
+            date_filter["$gte"] = datetime.fromisoformat(query.date_from.replace("Z", "+00:00"))
+        if query.date_to:
+            date_filter["$lte"] = datetime.fromisoformat(query.date_to.replace("Z", "+00:00"))
+        match_conditions["submitted_at"] = date_filter
+    
+    # Other filters
+    if query.locations:
+        match_conditions["service_location"] = {"$in": query.locations}
+    if query.status:
+        match_conditions["status"] = {"$in": query.status}
+    if query.templates:
+        match_conditions["template_id"] = {"$in": query.templates}
+    
+    # Role-based access control
+    if current_user.role in ["manager", "data_entry"]:
+        match_conditions["service_location"] = current_user.assigned_location
+    
+    # Ensure custom field exists in form_data
+    match_conditions[f"form_data.{query.custom_field_name}"] = {"$exists": True, "$ne": None}
+    
+    pipeline = []
+    if match_conditions:
+        pipeline.append({"$match": match_conditions})
+    
+    # Get field values and analyze based on type
+    if query.custom_field_analysis_type == "numerical":
+        # Numerical analysis - convert to numbers and calculate stats
+        pipeline.extend([
+            {
+                "$addFields": {
+                    "field_value_num": {
+                        "$toDouble": {
+                            "$ifNull": [f"$form_data.{query.custom_field_name}", 0]
+                        }
+                    }
+                }
+            },
+            {
+                "$group": {
+                    "_id": None,
+                    "total_count": {"$sum": 1},
+                    "average": {"$avg": "$field_value_num"},
+                    "sum": {"$sum": "$field_value_num"},
+                    "min": {"$min": "$field_value_num"},
+                    "max": {"$max": "$field_value_num"},
+                    "values": {"$push": "$field_value_num"}
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "total_count": 1,
+                    "average": {"$round": ["$average", 2]},
+                    "sum": {"$round": ["$sum", 2]},
+                    "min": 1,
+                    "max": 1,
+                    "std_dev": {
+                        "$round": [{"$stdDevSamp": "$values"}, 2]
+                    }
+                }
+            }
+        ])
+        
+    elif query.custom_field_analysis_type == "trend":
+        # Trend analysis - group by month and show field values over time
+        pipeline.extend([
+            {
+                "$group": {
+                    "_id": {
+                        "month": {"$dateToString": {"format": "%Y-%m", "date": "$submitted_at"}},
+                        "field_value": f"$form_data.{query.custom_field_name}"
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id.month",
+                    "values": {
+                        "$push": {
+                            "value": "$_id.field_value",
+                            "count": "$count"
+                        }
+                    },
+                    "total_submissions": {"$sum": "$count"}
+                }
+            },
+            {
+                "$project": {
+                    "month": "$_id",
+                    "values": 1,
+                    "total_submissions": 1,
+                    "_id": 0
+                }
+            },
+            {"$sort": {"month": 1}}
+        ])
+        
+    else:
+        # Frequency analysis - count occurrences of each value
+        pipeline.extend([
+            {
+                "$group": {
+                    "_id": f"$form_data.{query.custom_field_name}",
+                    "count": {"$sum": 1},
+                    "submissions": {"$push": {
+                        "id": "$id",
+                        "location": "$service_location",
+                        "submitted_at": "$submitted_at"
+                    }}
+                }
+            },
+            {
+                "$project": {
+                    "value": "$_id",
+                    "count": 1,
+                    "percentage": {
+                        "$multiply": [
+                            {"$divide": ["$count", {"$sum": "$count"}]},
+                            100
+                        ]
+                    },
+                    "sample_submissions": {"$slice": ["$submissions", 5]},
+                    "_id": 0
+                }
+            },
+            {"$sort": {"count": -1}}
+        ])
+    
+    results = await db.data_submissions.aggregate(pipeline).to_list(1000)
+    
+    return {
+        "field_name": query.custom_field_name,
+        "analysis_type": query.custom_field_analysis_type,
+        "query_parameters": query.dict(),
+        "results": results
+    }
+
+@api_router.get("/reports/pdf")
+async def generate_pdf_report(
+    report_type: str = "statistics",
+    query_params: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate comprehensive PDF report"""
+    
+    if report_type == "statistics" and "statistics" not in current_user.page_permissions and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Access to statistics reports denied")
+    
+    try:
+        from io import BytesIO
+        
+        # Create PDF buffer
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title
+        title = Paragraph(f"CLIENT SERVICES Platform - {report_type.title()} Report", styles['Title'])
+        story.append(title)
+        story.append(Spacer(1, 12))
+        
+        # Report metadata
+        report_info = [
+            ["Generated By:", current_user.username],
+            ["Generated At:", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")],
+            ["Report Type:", report_type.title()]
+        ]
+        
+        if query_params:
+            import json
+            try:
+                params = json.loads(query_params)
+                for key, value in params.items():
+                    if value:
+                        report_info.append([key.replace("_", " ").title() + ":", str(value)])
+            except:
+                pass
+        
+        info_table = Table(report_info, colWidths=[2*72, 4*72])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        story.append(info_table)
+        story.append(Spacer(1, 20))
+        
+        # Get recent statistics data for the report
+        if report_type == "statistics":
+            query = StatisticsQuery()
+            stats_data = await generate_statistics(query, current_user)
+            
+            # Summary section
+            summary_title = Paragraph("Summary Statistics", styles['Heading2'])
+            story.append(summary_title)
+            story.append(Spacer(1, 12))
+            
+            summary_data = [
+                ["Metric", "Value"],
+                ["Total Submissions", str(stats_data["summary"]["total_submissions"])],
+                ["Approved", str(stats_data["summary"]["total_approved"])],
+                ["Reviewed", str(stats_data["summary"]["total_reviewed"])],
+                ["Pending", str(stats_data["summary"]["total_submitted"])],
+                ["Rejected", str(stats_data["summary"]["total_rejected"])],
+                ["Approval Rate", f"{stats_data['summary']['approval_rate']}%"]
+            ]
+            
+            summary_table = Table(summary_data, colWidths=[3*72, 2*72])
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            
+            story.append(summary_table)
+            story.append(Spacer(1, 20))
+            
+            # Detailed breakdown
+            details_title = Paragraph("Detailed Breakdown", styles['Heading2'])
+            story.append(details_title)
+            story.append(Spacer(1, 12))
+            
+            details_data = [["Category", "Total", "Approved", "Reviewed", "Pending", "Rejected", "Users"]]
+            for item in stats_data["data"]:
+                details_data.append([
+                    str(item.get("category", "Unknown")),
+                    str(item["total_submissions"]),
+                    str(item["approved_count"]),
+                    str(item["reviewed_count"]),
+                    str(item["submitted_count"]),
+                    str(item["rejected_count"]),
+                    str(item["unique_user_count"])
+                ])
+            
+            details_table = Table(details_data, colWidths=[1.5*72, 0.7*72, 0.7*72, 0.7*72, 0.7*72, 0.7*72, 0.7*72])
+            details_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            
+            story.append(details_table)
+        
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+        
+        return StreamingResponse(
+            BytesIO(buffer.getvalue()),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={report_type}_report.pdf"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating PDF report: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating PDF report: {str(e)}")
+
+# Location and Template Restore Endpoints
+@api_router.get("/locations/deleted", response_model=List[ServiceLocation])
+async def get_deleted_locations(current_user: User = Depends(require_role(["admin"]))):
+    """Get all soft-deleted locations"""
+    locations = await db.service_locations.find({"is_active": False}).to_list(1000)
+    return [ServiceLocation(**location) for location in locations]
+
+@api_router.post("/locations/{location_id}/restore")
+async def restore_location(location_id: str, current_user: User = Depends(require_role(["admin"]))):
+    """Restore a soft-deleted location"""
+    result = await db.service_locations.update_one(
+        {"id": location_id, "is_active": False}, 
+        {"$set": {"is_active": True}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Location not found or already active")
+    return {"message": "Location restored successfully"}
+
+@api_router.get("/templates/deleted", response_model=List[FormTemplate])
+async def get_deleted_templates(current_user: User = Depends(require_role(["admin"]))):
+    """Get all soft-deleted templates"""
+    templates = await db.form_templates.find({"is_active": False}).to_list(1000)
+    return [FormTemplate(**template) for template in templates]
+
+@api_router.post("/templates/{template_id}/restore")
+async def restore_template(template_id: str, current_user: User = Depends(require_role(["admin"]))):
+    """Restore a soft-deleted template"""
+    result = await db.form_templates.update_one(
+        {"id": template_id, "is_active": False}, 
+        {"$set": {"is_active": True}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found or already active")
+    return {"message": "Template restored successfully"}
 
 # Enhanced submissions endpoint to include username
 @api_router.get("/submissions-detailed")
