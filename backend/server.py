@@ -196,7 +196,10 @@ class StatisticsQuery(BaseModel):
     user_roles: Optional[List[str]] = []
     templates: Optional[List[str]] = []
     status: Optional[List[str]] = []
-    group_by: Optional[str] = "location"  # location, month, template, status, user_role
+    group_by: Optional[str] = "location"  # location, month, template, status, user_role, custom_field
+    analyze_custom_fields: Optional[bool] = False
+    custom_field_name: Optional[str] = None
+    custom_field_analysis_type: Optional[str] = "frequency"  # frequency, numerical, trend
 
 # Helper function to get default page permissions based on role
 def get_default_permissions(role: str) -> List[str]:
