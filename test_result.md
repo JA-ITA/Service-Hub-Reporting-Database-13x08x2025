@@ -240,6 +240,54 @@ backend:
         agent: "testing"
         comment: "✅ COMPREHENSIVE TESTING COMPLETED: All database models working correctly. Verified UUID primary keys are used consistently (not MongoDB ObjectIds), proper data serialization for JSON responses, MongoDB connection working correctly, default data initialization (admin user, sample locations, system roles), and all CRUD operations functioning properly across all collections."
 
+  - task: "Enhanced Statistics with Custom Field Analysis"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to implement statistical analysis of custom form fields within templates - numerical analysis (avg, sum, min/max), text/select frequency analysis, and trend analysis for date fields"
+
+  - task: "Location Restore Functionality"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to add endpoints to view and restore soft-deleted service hub locations"
+
+  - task: "Template Restore Functionality"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to add endpoints to view and restore soft-deleted form templates"
+
+  - task: "PDF Report Generation System"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to implement comprehensive PDF report generation for statistics with charts and data tables using reportlab"
+
 frontend:
   - task: "Authentication UI"
     implemented: true
