@@ -3529,7 +3529,9 @@ const Reports = ({ user }) => {
 // Statistics Component
 const Statistics = ({ user }) => {
   const [statisticsData, setStatisticsData] = useState(null);
+  const [customFieldData, setCustomFieldData] = useState(null);
   const [options, setOptions] = useState({});
+  const [customFields, setCustomFields] = useState([]);
   const [query, setQuery] = useState({
     date_from: '',
     date_to: '',
@@ -3537,12 +3539,17 @@ const Statistics = ({ user }) => {
     user_roles: [],
     templates: [],
     status: [],
-    group_by: 'location'
+    group_by: 'location',
+    analyze_custom_fields: false,
+    custom_field_name: '',
+    custom_field_analysis_type: 'frequency'
   });
   const [loading, setLoading] = useState(false);
+  const [showCustomFieldAnalysis, setShowCustomFieldAnalysis] = useState(false);
 
   useEffect(() => {
     fetchOptions();
+    fetchCustomFields();
   }, []);
 
   const fetchOptions = async () => {
@@ -3551,6 +3558,15 @@ const Statistics = ({ user }) => {
       setOptions(response.data);
     } catch (error) {
       console.error('Error fetching statistics options:', error);
+    }
+  };
+
+  const fetchCustomFields = async () => {
+    try {
+      const response = await axios.get(`${API}/statistics/custom-fields`, { headers: getAuthHeader() });
+      setCustomFields(response.data.custom_fields);
+    } catch (error) {
+      console.error('Error fetching custom fields:', error);
     }
   };
 
