@@ -20,6 +20,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 import shutil
+from functools import lru_cache
+import time
 
 # Configure logging
 logging.basicConfig(
