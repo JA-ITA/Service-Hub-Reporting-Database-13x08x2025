@@ -278,11 +278,11 @@ backend:
 
   - task: "Template Restore Functionality"
     implemented: true
-    working: "unknown"
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
@@ -290,6 +290,9 @@ backend:
       - working: "unknown"
         agent: "main"
         comment: "IMPLEMENTED: Added /templates/deleted endpoint to get soft-deleted templates and /templates/{id}/restore endpoint to restore them"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING COMPLETED: Template restore functionality working perfectly. Tested complete workflow: 1) Created test template with dynamic fields successfully, 2) Soft-deleted template using DELETE /templates/{id} - template marked as inactive, 3) Retrieved deleted templates using GET /templates/deleted - successfully found deleted template in list, 4) Restored template using POST /templates/{id}/restore - template reactivated successfully, 5) Verified restored template appears in active templates list. All endpoints responding correctly with proper soft-delete and restore functionality. Template field definitions preserved during restore process."
 
   - task: "PDF Report Generation System"
     implemented: true
