@@ -710,20 +710,24 @@ async def change_own_password(password_data: dict, current_user: User = Depends(
 @api_router.get("/users/profile")
 async def get_user_profile(current_user: User = Depends(get_current_user)):
     """Get current user's profile"""
-    logger.info(f"Profile endpoint called for user: {current_user.username} with ID: {current_user.id}")
-    
-    # Use the current_user object directly since it's already validated and contains the user data
-    profile = {
-        "id": current_user.id,
-        "username": current_user.username,
-        "full_name": getattr(current_user, 'full_name', None),
-        "email": getattr(current_user, 'email', None),
-        "role": current_user.role,
-        "assigned_locations": getattr(current_user, 'assigned_locations', []),
-        "created_at": current_user.created_at
-    }
-    logger.info(f"Returning profile: {profile}")
-    return profile
+    try:
+        logger.info(f"Profile endpoint called for user: {current_user.username} with ID: {current_user.id}")
+        
+        # Use the current_user object directly since it's already validated and contains the user data
+        profile = {
+            "id": current_user.id,
+            "username": current_user.username,
+            "full_name": getattr(current_user, 'full_name', None),
+            "email": getattr(current_user, 'email', None),
+            "role": current_user.role,
+            "assigned_locations": getattr(current_user, 'assigned_locations', []),
+            "created_at": current_user.created_at
+        }
+        logger.info(f"Returning profile: {profile}")
+        return profile
+    except Exception as e:
+        logger.error(f"Error in get_user_profile: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting profile: {str(e)}")
 
 @api_router.put("/users/profile")
 async def update_user_profile(profile_data: UserProfileUpdate, current_user: User = Depends(get_current_user)):
