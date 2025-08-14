@@ -703,6 +703,8 @@ async def change_own_password(password_data: dict, current_user: User = Depends(
 @api_router.get("/users/profile")
 async def get_user_profile(current_user: User = Depends(get_current_user)):
     """Get current user's profile"""
+    logger.info(f"Profile endpoint called for user: {current_user.username} with ID: {current_user.id}")
+    
     # Use the current_user object directly since it's already validated and contains the user data
     profile = {
         "id": current_user.id,
@@ -713,6 +715,7 @@ async def get_user_profile(current_user: User = Depends(get_current_user)):
         "assigned_locations": getattr(current_user, 'assigned_locations', []),
         "created_at": current_user.created_at
     }
+    logger.info(f"Returning profile: {profile}")
     return profile
 
 @api_router.put("/users/profile")
