@@ -4320,7 +4320,12 @@ function App() {
 
   const handleLogin = (userData) => {
     setUser(userData);
-    setActiveTab('dashboard');
+    // Set default tab based on user role
+    if (userData.role === 'data_entry') {
+      setActiveTab('submit');
+    } else {
+      setActiveTab('dashboard');
+    }
   };
 
   const handleLogout = () => {
