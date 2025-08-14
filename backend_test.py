@@ -2087,6 +2087,215 @@ def test_pdf_report_generation():
     
     return True
 
+def test_user_profile_management():
+    """Test user profile management functionality"""
+    tester = ClientServicesAPITester()
+    
+    print("=" * 50)
+    print("TESTING USER PROFILE MANAGEMENT FUNCTIONALITY")
+    print("=" * 50)
+    
+    # Login as admin
+    if not tester.test_login("admin", "admin123"):
+        print("❌ Admin login failed, stopping tests")
+        return False
+    
+    # Test getting current user profile
+    if not tester.test_get_user_profile():
+        print("❌ Failed to get user profile")
+        return False
+    
+    # Test updating profile with full name and email
+    test_full_name = "Administrator User"
+    test_email = "admin@clientservices.com"
+    
+    if not tester.test_update_user_profile(full_name=test_full_name, email=test_email):
+        print("❌ Failed to update user profile")
+        return False
+    
+    # Verify the profile was updated by getting it again
+    success, updated_profile = tester.run_test(
+        "Get Updated Profile",
+        "GET",
+        "users/profile",
+        200
+    )
+    
+    if not success:
+        print("❌ Failed to get updated profile")
+        return False
+    
+    if updated_profile.get('full_name') != test_full_name:
+        print(f"❌ Full name not updated correctly. Expected: {test_full_name}, Got: {updated_profile.get('full_name')}")
+        return False
+    
+    if updated_profile.get('email') != test_email:
+        print(f"❌ Email not updated correctly. Expected: {test_email}, Got: {updated_profile.get('email')}")
+        return False
+    
+    print("✅ Profile update verified successfully")
+    
+    # Test updating only full name
+    new_full_name = "Updated Administrator"
+    if not tester.test_update_user_profile(full_name=new_full_name):
+        print("❌ Failed to update only full name")
+        return False
+    
+    # Test updating only email
+    new_email = "updated.admin@clientservices.com"
+    if not tester.test_update_user_profile(email=new_email):
+        print("❌ Failed to update only email")
+        return False
+    
+    # Test password change functionality
+    current_password = "admin123"
+    new_password = "NewAdminPass123!"
+    
+    if not tester.test_change_password(current_password, new_password):
+        print("❌ Failed to change password")
+        return False
+    
+    # Test login with new password
+    tester.token = None  # Clear token
+    if not tester.test_login("admin", new_password):
+        print("❌ Failed to login with new password")
+        return False
+    
+    print("✅ Login with new password successful")
+    
+    # Change password back to original for other tests
+    if not tester.test_change_password(new_password, current_password):
+        print("❌ Failed to change password back to original")
+        return False
+    
+    # Test invalid password change scenarios
+    tester.token = None
+    if not tester.test_login("admin", current_password):
+        print("❌ Failed to login with original password")
+        return False
+    
+    # Test with wrong current password
+    success, _ = tester.run_test(
+        "Change Password with Wrong Current Password",
+        "POST",
+        "users/change-password",
+        400,  # Expecting 400 Bad Request
+        data={
+            "current_password": "wrongpassword",
+            "new_password": "NewPass123!"
+        }
+    )
+    
+    if not success:
+        print("❌ Password change with wrong current password should return 400")
+        return False
+    
+    print("✅ Password change with wrong current password correctly rejected")
+    
+    # Test with same password
+    success, _ = tester.run_test(
+        "Change Password to Same Password",
+        "POST",
+        "users/change-password",
+        400,  # Expecting 400 Bad Request
+        data={
+            "current_password": current_password,
+            "new_password": current_password
+        }
+    )
+    
+    if not success:
+        print("❌ Password change to same password should return 400")
+        return False
+    
+    print("✅ Password change to same password correctly rejected")
+    
+    # Test with short password
+    success, _ = tester.run_test(
+        "Change Password to Short Password",
+        "POST",
+        "users/change-password",
+        400,  # Expecting 400 Bad Request
+        data={
+            "current_password": current_password,
+            "new_password": "123"
+        }
+    )
+    
+    if not success:
+        print("❌ Password change to short password should return 400")
+        return False
+    
+    print("✅ Password change to short password correctly rejected")
+    
+    return True
+
+def test_profile_management_with_different_users():
+    """Test profile management with different user roles"""
+    tester = ClientServicesAPITester()
+    
+    print("=" * 50)
+    print("TESTING PROFILE MANAGEMENT WITH DIFFERENT USER ROLES")
+    print("=" * 50)
+    
+    # Login as admin first to create test users
+    if not tester.test_login("admin", "admin123"):
+        print("❌ Admin login failed, stopping tests")
+        return False
+    
+    # Create a test data entry user
+    timestamp = datetime.now().strftime("%H%M%S")
+    test_username = f"profiletest_{timestamp}"
+    test_password = "TestPass123!"
+    
+    user_id = tester.test_create_user(
+        test_username,
+        test_password,
+        "data_entry",
+        "Central Hub"
+    )
+    
+    if not user_id:
+        print("❌ Failed to create test user for profile testing")
+        return False
+    
+    print(f"✅ Created test user {test_username} with ID: {user_id}")
+    
+    # Login as the test user
+    tester.token = None
+    if not tester.test_login(test_username, test_password):
+        print(f"❌ Failed to login as test user {test_username}")
+        return False
+    
+    # Test profile operations as data entry user
+    if not tester.test_get_user_profile():
+        print("❌ Data entry user failed to get profile")
+        return False
+    
+    # Update profile as data entry user
+    test_full_name = "Test Data Entry User"
+    test_email = f"{test_username}@example.com"
+    
+    if not tester.test_update_user_profile(full_name=test_full_name, email=test_email):
+        print("❌ Data entry user failed to update profile")
+        return False
+    
+    # Test password change as data entry user
+    new_password = "NewTestPass456!"
+    if not tester.test_change_password(test_password, new_password):
+        print("❌ Data entry user failed to change password")
+        return False
+    
+    # Verify login with new password
+    tester.token = None
+    if not tester.test_login(test_username, new_password):
+        print("❌ Failed to login with new password as data entry user")
+        return False
+    
+    print("✅ Data entry user profile management working correctly")
+    
+    return True
+
 def main():
     # Setup
     print("=" * 50)
