@@ -238,6 +238,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user = await db.users.find_one({"id": payload["user_id"]})
         if user:
+            # Log user data for debugging
+            logger.info(f"Found user in get_current_user: {user['username']} with ID: {user['id']}")
             return User(**user)
         raise HTTPException(status_code=401, detail="Invalid token")
     except jwt.ExpiredSignatureError:
