@@ -49,6 +49,8 @@ class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
     password_hash: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
     role: str  # 'admin', 'manager', 'data_entry', 'statistician'
     assigned_location: Optional[str] = None  # Keep for backward compatibility
     assigned_locations: List[str] = []  # New field for multiple locations
