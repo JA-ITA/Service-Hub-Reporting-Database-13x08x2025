@@ -698,6 +698,44 @@ async def change_own_password(password_data: dict, current_user: User = Depends(
         "message": "Password changed successfully",
         "changed_at": datetime.utcnow().isoformat()
     }
+@api_router.get("/users/profile")
+async def get_user_profile(current_user: User = Depends(get_current_user)):
+    """Get current user's profile"""
+    user_data = await db.users.find_one({"id": current_user.id})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Return profile information (excluding sensitive data)
+    profile = {
+        "id": user_data["id"],
+        "username": user_data["username"],
+        "full_name": user_data.get("full_name"),
+        "email": user_data.get("email"),
+        "role": user_data["role"],
+        "assigned_locations": user_data.get("assigned_locations", []),
+        "created_at": user_data["created_at"]
+    }
+    return profile
+
+@api_router.put("/users/profile")
+async def update_user_profile(profile_data: UserProfileUpdate, current_user: User = Depends(get_current_user)):
+    """Update current user's profile"""
+    update_data = {}
+    
+    if profile_data.full_name is not None:
+        update_data["full_name"] = profile_data.full_name
+    
+    if profile_data.email is not None:
+        update_data["email"] = profile_data.email
+    
+    if update_data:
+        update_data["updated_at"] = datetime.utcnow()
+        await db.users.update_one({"id": current_user.id}, {"$set": update_data})
+    
+    return {
+        "message": "Profile updated successfully",
+        "updated_at": datetime.utcnow().isoformat()
+    }
 
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: User = Depends(require_role(["admin"]))):
