@@ -83,6 +83,10 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+
 class ServiceLocation(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
