@@ -4306,6 +4306,259 @@ const Statistics = ({ user }) => {
   );
 };
 
+// Profile Component
+const Profile = ({ user }) => {
+  const [profileData, setProfileData] = useState({
+    full_name: '',
+    email: ''
+  });
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await axios.get(`${API}/users/profile`, { headers: getAuthHeader() });
+      setProfileData({
+        full_name: response.data.full_name || '',
+        email: response.data.email || ''
+      });
+      setLoading(false);
+    } catch (error) {
+      setError('Error loading profile: ' + (error.response?.data?.detail || error.message));
+      setLoading(false);
+    }
+  };
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    
+    try {
+      await axios.put(`${API}/users/profile`, profileData, { headers: getAuthHeader() });
+      setSuccess('Profile updated successfully!');
+      setIsEditing(false);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      setError('Error updating profile: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      setError('New passwords do not match');
+      return;
+    }
+
+    if (passwordData.new_password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/users/change-password`, {
+        current_password: passwordData.current_password,
+        new_password: passwordData.new_password
+      }, { headers: getAuthHeader() });
+      
+      setSuccess('Password changed successfully!');
+      setIsChangingPassword(false);
+      setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      setError('Error changing password: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="text-center">Loading profile...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-6">Profile</h2>
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {success}
+        </div>
+      )}
+
+      {/* Profile Information */}
+      <div className="bg-white p-6 rounded-lg shadow mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Profile Information</h3>
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            {isEditing ? 'Cancel' : 'Edit Profile'}
+          </button>
+        </div>
+
+        {!isEditing ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Username</label>
+              <p className="mt-1 text-sm text-gray-900">{user.username}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+              <p className="mt-1 text-sm text-gray-900">{profileData.full_name || 'Not provided'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <p className="mt-1 text-sm text-gray-900">{profileData.email || 'Not provided'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Role</label>
+              <p className="mt-1 text-sm text-gray-900 capitalize">{user.role.replace('_', ' ')}</p>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Username</label>
+              <p className="mt-1 text-sm text-gray-500">{user.username} (cannot be changed)</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+              <input
+                type="text"
+                value={profileData.full_name}
+                onChange={(e) => setProfileData({ ...profileData, full_name: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                value={profileData.email}
+                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Role</label>
+              <p className="mt-1 text-sm text-gray-500 capitalize">{user.role.replace('_', ' ')} (cannot be changed)</p>
+            </div>
+            <div className="flex space-x-4">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Save Changes
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* Password Change */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Change Password</h3>
+          <button
+            onClick={() => setIsChangingPassword(!isChangingPassword)}
+            className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+          >
+            {isChangingPassword ? 'Cancel' : 'Change Password'}
+          </button>
+        </div>
+
+        {isChangingPassword && (
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Current Password</label>
+              <input
+                type="password"
+                value={passwordData.current_password}
+                onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">New Password</label>
+              <input
+                type="password"
+                value={passwordData.new_password}
+                onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
+                required
+                minLength={6}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+              <input
+                type="password"
+                value={passwordData.confirm_password}
+                onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                required
+                minLength={6}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex space-x-4">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Change Password
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsChangingPassword(false);
+                  setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Main App Component
 function App() {
   const [user, setUser] = useState(null);
