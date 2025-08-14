@@ -701,8 +701,11 @@ async def change_own_password(password_data: dict, current_user: User = Depends(
 @api_router.get("/users/profile")
 async def get_user_profile(current_user: User = Depends(get_current_user)):
     """Get current user's profile"""
+    # Get fresh user data from database to ensure we have the latest profile info
     user_data = await db.users.find_one({"id": current_user.id})
     if not user_data:
+        # Log the issue for debugging
+        logger.error(f"User not found in database: {current_user.id}, username: {current_user.username}")
         raise HTTPException(status_code=404, detail="User not found")
     
     # Return profile information (excluding sensitive data)
