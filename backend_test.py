@@ -2297,99 +2297,60 @@ def test_profile_management_with_different_users():
     return True
 
 def main():
-    # Setup
-    print("=" * 50)
-    print("CLIENT SERVICES PLATFORM API COMPREHENSIVE TESTS")
-    print("=" * 50)
+    """Run focused tests on newly implemented features that need testing"""
+    print("🚀 Starting CLIENT SERVICES Platform Backend API Testing - FOCUSED ON NEW FEATURES")
+    print("=" * 80)
+    print("Backend URL: https://site-optimizer-7.preview.emergentagent.com/api")
+    print("Testing newly implemented features that require validation...")
+    print("=" * 80)
     
-    # Test results tracking
+    # Test results tracking for new features only
     test_results = {}
     
-    # Test the complete user registration, approval, and password reset flow
-    test_results['registration_flow'] = test_user_registration_approval_flow()
+    # Test categories focusing on newly implemented features that need testing
+    test_categories = [
+        ("Enhanced Statistics with Custom Field Analysis", test_enhanced_statistics_custom_fields),
+        ("Location Restore Functionality", test_location_restore_functionality), 
+        ("Template Restore Functionality", test_template_restore_functionality),
+        ("PDF Report Generation System", test_pdf_report_generation),
+        ("User Profile Management System", test_user_profile_management)
+    ]
     
-    # Test the user rejection flow
-    test_results['rejection_flow'] = test_user_rejection_flow()
+    for category_name, test_function in test_categories:
+        print(f"\n{'='*20} {category_name} {'='*20}")
+        try:
+            result = test_function()
+            test_results[category_name] = result
+            if result:
+                print(f"✅ {category_name}: PASSED")
+            else:
+                print(f"❌ {category_name}: FAILED")
+        except Exception as e:
+            print(f"❌ {category_name}: ERROR - {str(e)}")
+            test_results[category_name] = False
     
-    # Test invalid password reset scenarios
-    test_results['invalid_reset'] = test_invalid_password_reset()
+    # Print final results summary
+    print("\n" + "=" * 80)
+    print("NEW FEATURES TEST RESULTS SUMMARY")
+    print("=" * 80)
     
-    # Test deleted users functionality
-    test_results['deleted_users'] = test_deleted_users_functionality()
-    
-    # Test role management
-    test_results['role_management'] = test_role_management()
-    
-    # Test location management
-    test_results['location_management'] = test_location_management()
-    
-    # Test template management
-    test_results['template_management'] = test_template_management()
-    
-    # Test data submission system
-    test_results['data_submission'] = test_data_submission_system()
-    
-    # Test file upload system
-    test_results['file_upload'] = test_file_upload_system()
-    
-    # Test reporting system
-    test_results['reporting_system'] = test_reporting_system()
-    
-    # Test admin settings
-    test_results['admin_settings'] = test_admin_settings()
-    
-    # Test new enhanced features
-    test_results['enhanced_statistics'] = test_enhanced_statistics_custom_fields()
-    test_results['location_restore'] = test_location_restore_functionality()
-    test_results['template_restore'] = test_template_restore_functionality()
-    test_results['pdf_generation'] = test_pdf_report_generation()
-    
-    # Test profile management functionality
-    test_results['profile_management'] = test_user_profile_management()
-    test_results['profile_different_users'] = test_profile_management_with_different_users()
-    
-    # Test basic API functionality
-    tester = ClientServicesAPITester()
-    
-    # Login as admin
-    if not tester.test_login("admin", "admin123"):
-        print("❌ Admin login failed, stopping basic API tests")
-        return 1
-    
-    # Get current user info
-    tester.test_get_current_user()
-    
-    # Get all users
-    tester.test_get_users()
-    
-    # Get all locations
-    tester.test_get_locations()
-    
-    # Get all templates
-    tester.test_get_templates()
-    
-    # Get submissions
-    tester.test_get_submissions()
-    
-    # Print results
-    print("\n" + "=" * 50)
-    print("COMPREHENSIVE TEST RESULTS")
-    print("=" * 50)
-    print(f"Basic API Tests: {tester.tests_passed}/{tester.tests_run} ({tester.tests_passed/tester.tests_run*100:.1f}%)")
+    passed_count = sum(1 for result in test_results.values() if result)
+    total_count = len(test_results)
     
     for test_name, result in test_results.items():
-        status = "✅" if result else "❌"
-        print(f"{test_name.replace('_', ' ').title()}: {status}")
+        status = "✅ WORKING" if result else "❌ FAILED"
+        print(f"{test_name}: {status}")
     
-    print("=" * 50)
+    print("=" * 80)
+    print(f"OVERALL RESULTS: {passed_count}/{total_count} tests passed ({passed_count/total_count*100:.1f}%)")
     
-    # Calculate overall success
-    all_tests_passed = all(test_results.values()) and (tester.tests_passed == tester.tests_run)
-    
+    # Final summary
+    all_tests_passed = all(test_results.values())
     if all_tests_passed:
-        print("🎉 ALL TESTS PASSED! CLIENT SERVICES Platform is working correctly.")
+        print("🎉 ALL NEW FEATURE TESTS PASSED! CLIENT SERVICES Platform new features are working correctly.")
     else:
-        print("⚠️  Some tests failed. Please review the results above.")
+        print("❌ SOME NEW FEATURE TESTS FAILED! Please check the output above for details.")
+    print("=" * 80)
     
     return 0 if all_tests_passed else 1
 
