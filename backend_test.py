@@ -2344,6 +2344,10 @@ def main():
     test_results['template_restore'] = test_template_restore_functionality()
     test_results['pdf_generation'] = test_pdf_report_generation()
     
+    # Test profile management functionality
+    test_results['profile_management'] = test_user_profile_management()
+    test_results['profile_different_users'] = test_profile_management_with_different_users()
+    
     # Test basic API functionality
     tester = ClientServicesAPITester()
     
