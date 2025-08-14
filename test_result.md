@@ -460,17 +460,29 @@ frontend:
         agent: "main"
         comment: "IMPLEMENTED: Added tabbed interface to LocationManagement and TemplateManagement components with Active/Deleted tabs, restore buttons for deleted items, and proper data fetching for both active and deleted items"
 
-  - task: "PDF Report Generation UI"
+  - task: "Conditional Login Redirect for Data Entry Users"
     implemented: true
     working: "unknown"
     file: "frontend/src/App.js"
     stuck_count: 0
-    priority: "medium"
+    priority: "high"
     needs_retesting: true
     status_history:
       - working: "unknown"
         agent: "main"
-        comment: "IMPLEMENTED: Added Download PDF Report button to Statistics component that calls the PDF generation endpoint and downloads the generated report file"
+        comment: "IMPLEMENTED: Modified handleLogin function to redirect data_entry users to 'submit' tab instead of 'dashboard' after login. All other roles continue to go to dashboard."
+
+  - task: "User Profile Management System"
+    implemented: true
+    working: "unknown"
+    file: "backend/server.py, frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "unknown"
+        agent: "main"
+        comment: "IMPLEMENTED: Added full_name and email fields to User model, created /users/profile GET and PUT endpoints for profile management, and comprehensive Profile component with profile editing and password change functionality. Profile tab available to all user roles."
 
 metadata:
   created_by: "main_agent"
