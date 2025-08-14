@@ -701,22 +701,15 @@ async def change_own_password(password_data: dict, current_user: User = Depends(
 @api_router.get("/users/profile")
 async def get_user_profile(current_user: User = Depends(get_current_user)):
     """Get current user's profile"""
-    # Get fresh user data from database to ensure we have the latest profile info
-    user_data = await db.users.find_one({"id": current_user.id})
-    if not user_data:
-        # Log the issue for debugging
-        logger.error(f"User not found in database: {current_user.id}, username: {current_user.username}")
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Return profile information (excluding sensitive data)
+    # Use the current_user object directly since it's already validated and contains the user data
     profile = {
-        "id": user_data["id"],
-        "username": user_data["username"],
-        "full_name": user_data.get("full_name"),
-        "email": user_data.get("email"),
-        "role": user_data["role"],
-        "assigned_locations": user_data.get("assigned_locations", []),
-        "created_at": user_data["created_at"]
+        "id": current_user.id,
+        "username": current_user.username,
+        "full_name": getattr(current_user, 'full_name', None),
+        "email": getattr(current_user, 'email', None),
+        "role": current_user.role,
+        "assigned_locations": getattr(current_user, 'assigned_locations', []),
+        "created_at": current_user.created_at
     }
     return profile
 
