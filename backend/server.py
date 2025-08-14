@@ -47,6 +47,24 @@ JWT_SECRET = "your-secret-key-here"
 JWT_ALGORITHM = "HS256"
 security = HTTPBearer()
 
+# Cache for frequently accessed data
+CACHE_TTL = 300  # 5 minutes
+_cache = {}
+
+def get_cached_data(key):
+    """Get cached data if not expired"""
+    if key in _cache:
+        data, timestamp = _cache[key]
+        if time.time() - timestamp < CACHE_TTL:
+            return data
+        else:
+            del _cache[key]
+    return None
+
+def set_cached_data(key, data):
+    """Cache data with timestamp"""
+    _cache[key] = (data, time.time())
+
 # Create the main app without a prefix
 app = FastAPI(title="CLIENT SERVICES Platform")
 
