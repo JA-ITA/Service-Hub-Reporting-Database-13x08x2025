@@ -1302,10 +1302,10 @@ const UserManagement = () => {
 
     // Fallback to hardcoded defaults
     const defaults = {
-      admin: ['dashboard', 'users', 'roles', 'locations', 'templates', 'reports', 'submit', 'statistics'],
-      manager: ['dashboard', 'submit', 'reports'],
-      data_entry: ['dashboard', 'submit'],
-      statistician: ['dashboard', 'statistics', 'reports']
+      admin: ['dashboard', 'users', 'roles', 'locations', 'templates', 'reports', 'submit', 'statistics', 'profile'],
+      manager: ['dashboard', 'submit', 'reports', 'profile'],
+      data_entry: ['dashboard', 'submit', 'profile'],
+      statistician: ['dashboard', 'statistics', 'reports', 'profile']
     };
     return defaults[role] || [];
   };
