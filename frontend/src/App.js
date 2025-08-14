@@ -1289,7 +1289,8 @@ const UserManagement = () => {
     { id: 'templates', label: 'Manage Templates' },
     { id: 'reports', label: 'Reports' },
     { id: 'submit', label: 'Submit Data' },
-    { id: 'statistics', label: 'Statistics' }
+    { id: 'statistics', label: 'Statistics' },
+    { id: 'profile', label: 'Profile' }
   ];
 
   const getDefaultPermissions = (role) => {
