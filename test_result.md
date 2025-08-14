@@ -492,6 +492,8 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Conditional Login Redirect for Data Entry Users"
+    - "User Profile Management System"
     - "Enhanced Statistics with Custom Field Analysis"
     - "Location Restore Functionality" 
     - "Template Restore Functionality"
