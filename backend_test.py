@@ -189,6 +189,84 @@ class ClientServicesAPITester:
         )
         return success
 
+    def test_get_user_profile(self):
+        """Test getting current user's profile"""
+        success, response = self.run_test(
+            "Get User Profile",
+            "GET",
+            "users/profile",
+            200
+        )
+        
+        if success:
+            # Verify profile contains expected fields
+            required_fields = ['id', 'username', 'role']
+            optional_fields = ['full_name', 'email', 'assigned_locations', 'created_at']
+            
+            for field in required_fields:
+                if field not in response:
+                    print(f"❌ Profile missing required field: {field}")
+                    return False
+            
+            print(f"✅ Profile retrieved successfully for user: {response.get('username')}")
+            print(f"   - Full Name: {response.get('full_name', 'Not set')}")
+            print(f"   - Email: {response.get('email', 'Not set')}")
+            print(f"   - Role: {response.get('role')}")
+            print(f"   - Assigned Locations: {response.get('assigned_locations', [])}")
+            
+            return True
+        
+        return False
+
+    def test_update_user_profile(self, full_name=None, email=None):
+        """Test updating current user's profile"""
+        update_data = {}
+        if full_name is not None:
+            update_data["full_name"] = full_name
+        if email is not None:
+            update_data["email"] = email
+        
+        if not update_data:
+            print("❌ No profile data provided for update")
+            return False
+        
+        success, response = self.run_test(
+            "Update User Profile",
+            "PUT",
+            "users/profile",
+            200,
+            data=update_data
+        )
+        
+        if success:
+            print(f"✅ Profile updated successfully")
+            if full_name:
+                print(f"   - Full Name updated to: {full_name}")
+            if email:
+                print(f"   - Email updated to: {email}")
+            return True
+        
+        return False
+
+    def test_change_password(self, current_password, new_password):
+        """Test changing user's own password"""
+        success, response = self.run_test(
+            "Change Own Password",
+            "POST",
+            "users/change-password",
+            200,
+            data={
+                "current_password": current_password,
+                "new_password": new_password
+            }
+        )
+        
+        if success:
+            print(f"✅ Password changed successfully")
+            return True
+        
+        return False
+
     def test_create_user(self, username, password, role, assigned_location=None, page_permissions=None):
         """Test creating a new user"""
         data = {
