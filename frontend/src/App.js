@@ -4613,6 +4613,8 @@ function App() {
         return <Reports user={user} />;
       case 'statistics':
         return <Statistics user={user} />;
+      case 'profile':
+        return <Profile user={user} />;
       default:
         return <Dashboard user={user} />;
     }
