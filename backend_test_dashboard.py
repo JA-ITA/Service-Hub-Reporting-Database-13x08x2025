@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import json
 
 class DashboardAPITester:
-    def __init__(self, base_url="https://default-submit.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://site-optimizer-7.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
