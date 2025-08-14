@@ -749,48 +749,6 @@ async def change_own_password(password_data: dict, current_user: User = Depends(
         "message": "Password changed successfully",
         "changed_at": datetime.utcnow().isoformat()
     }
-@api_router.get("/users/profile")
-async def get_user_profile(current_user: User = Depends(get_current_user)):
-    """Get current user's profile"""
-    try:
-        logger.info(f"Profile endpoint called for user: {current_user.username} with ID: {current_user.id}")
-        
-        # Use the current_user object directly since it's already validated and contains the user data
-        profile = {
-            "id": current_user.id,
-            "username": current_user.username,
-            "full_name": getattr(current_user, 'full_name', None),
-            "email": getattr(current_user, 'email', None),
-            "role": current_user.role,
-            "assigned_locations": getattr(current_user, 'assigned_locations', []),
-            "created_at": current_user.created_at
-        }
-        logger.info(f"Returning profile: {profile}")
-        return profile
-    except Exception as e:
-        logger.error(f"Error in get_user_profile: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error getting profile: {str(e)}")
-
-@api_router.put("/users/profile")
-async def update_user_profile(profile_data: UserProfileUpdate, current_user: User = Depends(get_current_user)):
-    """Update current user's profile"""
-    update_data = {}
-    
-    if profile_data.full_name is not None:
-        update_data["full_name"] = profile_data.full_name
-    
-    if profile_data.email is not None:
-        update_data["email"] = profile_data.email
-    
-    if update_data:
-        update_data["updated_at"] = datetime.utcnow()
-        await db.users.update_one({"id": current_user.id}, {"$set": update_data})
-    
-    return {
-        "message": "Profile updated successfully",
-        "updated_at": datetime.utcnow().isoformat()
-    }
-
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: User = Depends(require_role(["admin"]))):
     """Soft delete a user (mark as inactive)"""
