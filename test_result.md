@@ -260,11 +260,11 @@ backend:
 
   - task: "Location Restore Functionality"
     implemented: true
-    working: "unknown"
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
@@ -272,6 +272,9 @@ backend:
       - working: "unknown"
         agent: "main"
         comment: "IMPLEMENTED: Added /locations/deleted endpoint to get soft-deleted locations and /locations/{id}/restore endpoint to restore them"
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING COMPLETED: Location restore functionality working perfectly. Tested complete workflow: 1) Created test location successfully, 2) Soft-deleted location using DELETE /locations/{id} - location marked as inactive, 3) Retrieved deleted locations using GET /locations/deleted - successfully found deleted location in list, 4) Restored location using POST /locations/{id}/restore - location reactivated successfully, 5) Verified restored location appears in active locations list. All endpoints responding correctly with proper soft-delete and restore functionality. Audit trail working correctly."
 
   - task: "Template Restore Functionality"
     implemented: true
